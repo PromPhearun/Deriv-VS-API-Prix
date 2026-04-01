@@ -47,7 +47,7 @@ function App() {
       
       const activeSymbols = await api.getActiveSymbols()
       setSymbols(activeSymbols)
-      const history = await api.getTickHistory(currentSymbol, 100)
+      const history = await api.getTickHistory(currentSymbol, 1000)
       const ticks = history.prices.map((price, i) => ({
         epoch: history.times[i],
         quote: price,
@@ -73,7 +73,7 @@ function App() {
     const handleResubscribed = () => {
       console.log("[App] Resubscribed after reconnection")
       // Refresh tick history after reconnection
-      api.getTickHistory(currentSymbol, 100).then((history) => {
+      api.getTickHistory(currentSymbol, 1000).then((history) => {
         const ticks = history.prices.map((price, i) => ({
           epoch: history.times[i],
           quote: price,
@@ -108,7 +108,7 @@ function App() {
     api.subscribeTicks(newSymbol, (tick) => {
       setCurrentTick({ epoch: tick.epoch, quote: tick.quote, symbol: tick.symbol })
     })
-    api.getTickHistory(newSymbol, 100).then((history) => {
+    api.getTickHistory(newSymbol, 1000).then((history) => {
       const ticks = history.prices.map((price, i) => ({
         epoch: history.times[i],
         quote: price,
@@ -153,7 +153,7 @@ function App() {
         </div>
       </header>
 
-      {error && (
+      {error && !error.includes("WebSocket closed immediately after opening") && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2">
           <p className="text-destructive text-sm text-center">{error}</p>
         </div>
