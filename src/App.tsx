@@ -75,7 +75,7 @@ function App() {
         }
       }
 
-      if (style === 'area' || style === 'line') {
+      if (style === 'area' || style === 'line' || style === 'candlestick') {
         activeStreamRef.current = 'ticks'
         // Unsubscribe from OHLC first if active
         if (ohlcUnsubscribeRef.current) {
@@ -168,7 +168,7 @@ function App() {
       loadingSymbolRef.current = currentSymbol
 
       // Fetch appropriate history based on chart style
-      if (chartStyle === 'area' || chartStyle === 'line') {
+      if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
         const history = await api.getTickHistory(currentSymbol, 1000)
         const ticks = history.prices.map((price, i) => ({
           epoch: history.times[i],
@@ -177,7 +177,7 @@ function App() {
         }))
         setTickHistory(ticks)
       } else {
-        // Fetch OHLC history for candlestick/OHLC charts
+        // Fetch OHLC history for OHLC chart style
         try {
           const ohlcData = await api.getOHLCHistory(currentSymbol, 60, 500)
           const ohlcHistory = ohlcData.candles.map((c) => ({
@@ -264,7 +264,7 @@ function App() {
       
       try {
         // Fetch appropriate history based on chart style
-        if (chartStyle === 'area' || chartStyle === 'line') {
+        if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
           const history = await api.getTickHistory(symbolToLoad, 1000)
           if (loadingSymbolRef.current !== symbolToLoad) return
           const ticks = history.prices.map((price, i) => ({
@@ -330,7 +330,7 @@ function App() {
       
       // Fetch appropriate history for the new chart style
       try {
-        if (chartStyle === 'area' || chartStyle === 'line') {
+        if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
           const history = await api.getTickHistory(currentSymbol, 1000)
           const ticks = history.prices.map((price, i) => ({
             epoch: history.times[i],
@@ -380,17 +380,14 @@ function App() {
   const firstTick = tickHistory?.[0]
   
   // Calculate High/Low based on chart style
-  const highValue = chartStyle === 'candlestick' && ohlcHistory?.length > 0
-    ? Math.max(...ohlcHistory.map((c) => c?.high ?? 0))
-    : tickHistory?.length > 0
-      ? Math.max(...tickHistory.map((t) => t?.quote ?? 0))
-      : null
+  // For candlestick, now use tick data (same as area/line)
+  const highValue = tickHistory?.length > 0
+    ? Math.max(...tickHistory.map((t) => t?.quote ?? 0))
+    : null
   
-  const lowValue = chartStyle === 'candlestick' && ohlcHistory?.length > 0
-    ? Math.min(...ohlcHistory.map((c) => c?.low ?? 0))
-    : tickHistory?.length > 0
-      ? Math.min(...tickHistory.map((t) => t?.quote ?? 0))
-      : null
+  const lowValue = tickHistory?.length > 0
+    ? Math.min(...tickHistory.map((t) => t?.quote ?? 0))
+    : null
   
   const priceChange = lastTick && secondLastTick
     ? lastTick.quote - secondLastTick.quote
@@ -484,10 +481,10 @@ function App() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-muted-foreground">
-                    {chartStyle === 'candlestick' || chartStyle === 'ohlc' ? 'Candles' : 'Ticks'}
+                    {chartStyle === 'ohlc' ? 'Candles' : 'Ticks'}
                   </p>
                   <p className="text-lg font-semibold">
-                    {chartStyle === 'candlestick' || chartStyle === 'ohlc' ? ohlcHistory.length : totalTicksReceived}
+                    {chartStyle === 'ohlc' ? ohlcHistory.length : totalTicksReceived}
                   </p>
                 </CardContent>
               </Card>
