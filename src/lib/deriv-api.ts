@@ -54,11 +54,11 @@ class DerivAPI {
   private pingInterval: ReturnType<typeof setInterval> | null = null
   private lastPong: number = Date.now()
   private shouldReconnect: boolean = true // Flag to prevent reconnection when intentionally disconnecting
-  private token: string | null = null
+  private _token: string | null = null
   private pendingRequestsQueue: Array<() => void> = [] // Queue for requests sent before WebSocket is ready
   private isSubscribing: boolean = false // Mutex to prevent concurrent subscription requests
   private isHandlingAuth: boolean = false // Mutex to prevent duplicate auth handling
-  private hasSentAuth: boolean = false // Guard to prevent sending auth twice per connection
+  private _hasSentAuth: boolean = false // Guard to prevent sending auth twice per connection
 
   constructor() {
     // Don't auto-connect in constructor - let the app control when to connect
@@ -67,7 +67,7 @@ class DerivAPI {
 
   // Set authentication token
   setToken(token: string): void {
-    this.token = token
+    this._token = token
   }
 
   /**
@@ -83,14 +83,14 @@ class DerivAPI {
     }
 
     console.log("[DerivAPI] 🧹 Clean slate startup - clearing all ghost subscriptions...")
-    
+
     // Forget ticks and candles subscriptions
     // Note: 'proposal_open_contract' is not supported on public endpoint
     const results = await Promise.allSettled([
       this.forgetAll('ticks'),
       this.forgetAll('candles'),
     ])
-    
+
     results.forEach((result, i) => {
       const types = ['ticks', 'candles']
       if (result.status === 'fulfilled') {
@@ -102,7 +102,7 @@ class DerivAPI {
 
     // Clear all handlers to prevent message routing conflicts
     this.handlers.clear()
-    
+
     console.log("[DerivAPI] ✅ Clean slate complete - ready for fresh subscriptions")
   }
 
@@ -156,7 +156,7 @@ class DerivAPI {
 
           this.startPingInterval()
           this.emit("connection", { connected: true, authenticated: true })
-          
+
           this.flushRequestQueue()
           resolve()
         }
@@ -182,7 +182,7 @@ class DerivAPI {
           this.isConnecting = false
           this.isConnectedState = false
           this.isAuthorized = false
-          this.hasSentAuth = false
+          this._hasSentAuth = false
           this.emit("connection", { connected: false })
           this.attemptReconnect()
         }
@@ -234,7 +234,7 @@ class DerivAPI {
           // Emit connection event
           this.startPingInterval()
           this.emit("connection", { connected: true })
-          
+
           // Flush any queued requests
           this.flushRequestQueue()
           resolve()
@@ -261,7 +261,7 @@ class DerivAPI {
           this.isConnecting = false
           this.isConnectedState = false
           this.isAuthorized = false
-          this.hasSentAuth = false // Reset auth flag to allow re-authorization on reconnect
+          this._hasSentAuth = false // Reset auth flag to allow re-authorization on reconnect
           this.emit("connection", { connected: false })
           this.attemptReconnect()
         }
@@ -305,7 +305,7 @@ class DerivAPI {
 
     // ✅ FIX: Don't create subscriptions directly - let App.tsx handle it with mutex
     // This prevents race conditions between resubscribe() and subscribeToStream()
-    
+
     // First, forget all existing subscriptions to avoid "AlreadySubscribed" errors
     try {
       await this.forgetAll('ticks')
@@ -381,7 +381,7 @@ class DerivAPI {
     if ("error" in data) {
       const error = data.error as any
       const errorMessage = error?.message || error?.code || JSON.stringify(error)
-      
+
       // ✅ GRACEFULLY HANDLE "AlreadySubscribed" ERRORS (common during React Strict Mode)
       if (errorMessage.includes("already subscribed") || errorMessage.includes("AlreadySubscribed")) {
         // Silently handle - this is expected during React Strict Mode double-invocation
@@ -400,7 +400,7 @@ class DerivAPI {
         }
         return
       }
-      
+
       console.error("[DerivAPI] API Error:", errorMessage)
       this.emit("error", error)
       return
@@ -443,12 +443,12 @@ class DerivAPI {
   private async request(message: object): Promise<any> {
     const reqId = (message as any).req_id || this.getNextReqId()
     const messageWithReqId = { ...message, req_id: reqId }
-    
+
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(reqId, { resolve, reject })
-      
+
       this.send(messageWithReqId)
-      
+
       // Timeout after 10 seconds
       setTimeout(() => {
         if (this.pendingRequests.has(reqId)) {
@@ -466,23 +466,23 @@ class DerivAPI {
    */
   async forgetAll(type: 'ticks' | 'candles' | 'proposal_open_contract'): Promise<any> {
     const reqId = this.getNextReqId()
-    
+
     console.log(`[DerivAPI] 🔌 Forcing termination of all ${type} subscriptions`)
-    
+
     const result = await this.request({
       forget_all: type,
       req_id: reqId
     })
-    
+
     console.log(`[DerivAPI] ✅ Successfully terminated ${type} subscriptions:`, result)
-    
+
     // Reset stream state after successful termination
     if (type === 'ticks') {
       this.handlers.delete("tick")
     } else if (type === 'candles') {
       this.handlers.delete("ohlc")
     }
-    
+
     return result
   }
 
@@ -522,7 +522,7 @@ class DerivAPI {
     if (count === 0) {
       return // Silent return when queue is empty
     }
-    
+
     const queue = [...this.pendingRequestsQueue]
     this.pendingRequestsQueue = []
     queue.forEach(request => {
@@ -628,17 +628,17 @@ class DerivAPI {
         this.isSubscribing = false
       }
     }
-    
+
     this.isSubscribing = true
-    
+
     try {
       const reqId = this.getNextReqId()
       const subscriptionKey = `ticks_${symbol}`
 
-      
+
       // ✅ CLEAR PREVIOUS HANDLERS
       this.handlers.delete("tick")
-      
+
       const handler = (data: DerivMessage) => {
         if ("msg_type" in data && data.msg_type === "tick" && "tick" in data) {
           const tick = (data as TickStream).tick
@@ -690,7 +690,7 @@ class DerivAPI {
     // Remove all tick subscriptions from activeSubscriptions
     const tickSubscriptions = Array.from(this.activeSubscriptions.entries())
       .filter(([_, sub]) => sub.type === 'ticks')
-    
+
     tickSubscriptions.forEach(([key, _]) => {
       this.activeSubscriptions.delete(key)
     })
@@ -717,17 +717,17 @@ class DerivAPI {
         this.isSubscribing = false
       }
     }
-    
+
     this.isSubscribing = true
-    
+
     try {
       const reqId = this.getNextReqId()
       const subscriptionKey = `ohlc_${symbol}_${granularity}`
 
-      
+
       // ✅ CLEAR PREVIOUS HANDLERS
       this.handlers.delete("ohlc")
-      
+
       const handler = (data: DerivMessage) => {
         if ("msg_type" in data && data.msg_type === "ohlc" && "ohlc" in data) {
           const ohlc = (data as OHLCStream).ohlc
@@ -787,7 +787,7 @@ class DerivAPI {
     // Remove all OHLC subscriptions from activeSubscriptions
     const ohlcSubscriptions = Array.from(this.activeSubscriptions.entries())
       .filter(([_, sub]) => sub.type === 'ohlc')
-    
+
     ohlcSubscriptions.forEach(([key, _]) => {
       this.activeSubscriptions.delete(key)
     })
@@ -1712,7 +1712,7 @@ class DerivAPI {
     this.isConnecting = false
     this.isConnectedState = false
     this.isAuthorized = false
-    this.hasSentAuth = false // Reset auth flag
+    this._hasSentAuth = false // Reset auth flag
     this.handlers.clear()
     this.pendingRequests.clear()
     this.subscriptions.clear()
