@@ -1665,25 +1665,54 @@ class DerivAPI {
     clientId: string,
     redirectUri: string
   ): Promise<{ access_token: string; expires_in: number; token_type: string }> {
-    const response = await fetch(this.getOAuthTokenUrl(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
+    console.log("[DerivAPI] Exchanging code for token...")
+    console.log("[DerivAPI] Token URL:", this.getOAuthTokenUrl())
+    console.log("[DerivAPI] Client ID:", clientId)
+    console.log("[DerivAPI] Redirect URI:", redirectUri)
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+    try {
+      const body = new URLSearchParams({
         grant_type: "authorization_code",
         client_id: clientId,
         code,
         code_verifier: codeVerifier,
         redirect_uri: redirectUri,
-      }).toString(),
-    })
+      }).toString()
 
-    if (!response.ok) {
-      throw new Error(`Token exchange failed: ${response.statusText}`)
+      console.log("[DerivAPI] Request body:", body.replace(codeVerifier, "[REDACTED]"))
+
+      const response = await fetch(this.getOAuthTokenUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      console.log("[DerivAPI] Token response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[DerivAPI] Token error response:", errorText)
+        throw new Error(`Token exchange failed: ${response.status} ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log("[DerivAPI] Token exchange successful")
+      return data
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Token exchange timed out after 30 seconds")
+      }
+      throw error
     }
-
-    return response.json()
   }
 
   ping(): void {
