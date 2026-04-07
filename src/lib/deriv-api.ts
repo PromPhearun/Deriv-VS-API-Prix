@@ -9,6 +9,20 @@ import type {
   BalanceResponse,
   TradeParams,
   ContractsForResponse,
+  SellResponse,
+  CancelResponse,
+  ContractUpdateResponse,
+  ContractUpdateHistoryResponse,
+  StatementResponse,
+  ProfitTableResponse,
+  TradingTimesResponse,
+  ContractsListResponse,
+  TransactionStream,
+  CreateAccountParams,
+  CreateAccountResponse,
+  DerivAccountsResponse,
+  ResetDemoBalanceResponse,
+  OTPResponse,
 } from "../types/deriv"
 
 const DERIV_APP_ID = import.meta.env.VITE_DERIV_APP_ID || "1089"
@@ -1010,6 +1024,611 @@ class DerivAPI {
         }
       }, 10000)
     })
+  }
+
+  // Subscribe to balance updates (for real accounts)
+  subscribeBalance(callback: (balance: { balance: number; currency: string }) => void): () => void {
+    const reqId = this.getNextReqId()
+    const subscriptionKey = "balance_subscription"
+
+    const handler = (data: DerivMessage) => {
+      if ("msg_type" in data && data.msg_type === "balance" && "balance" in data) {
+        callback((data as any).balance)
+      }
+    }
+
+    this.on("balance", handler)
+
+    // Track this subscription for resubscription after reconnection
+    this.activeSubscriptions.set(subscriptionKey, {
+      type: 'proposal_open_contract',
+      params: {},
+      callback,
+    })
+
+    this.send({
+      balance: 1,
+      subscribe: 1,
+      req_id: reqId,
+    })
+
+    return () => {
+      this.off("balance", handler)
+      this.activeSubscriptions.delete(subscriptionKey)
+    }
+  }
+
+  // ==================== TRADING OPERATIONS ====================
+
+  /**
+   * Sell an open contract before expiry
+   * @param contractId - The contract ID to sell
+   * @param price - Minimum acceptable price (0 for market price)
+   */
+  async sellContract(contractId: number, price: number = 0): Promise<SellResponse["sell"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: SellResponse) => {
+          if (data.sell) {
+            resolve(data.sell)
+          } else {
+            reject(new Error("Failed to sell contract"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        sell: contractId,
+        price,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Cancel a contract (if cancellation is available)
+   * @param contractId - The contract ID to cancel
+   */
+  async cancelContract(contractId: number): Promise<CancelResponse["cancel"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: CancelResponse) => {
+          if (data.cancel) {
+            resolve(data.cancel)
+          } else {
+            reject(new Error("Failed to cancel contract"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        cancel: contractId,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Update settings for an open contract (stop loss, take profit)
+   * @param contractId - The contract ID to update
+   * @param limitOrder - Object with stop_loss and/or take_profit values
+   */
+  async updateContract(
+    contractId: number,
+    limitOrder: { stop_loss?: number | null; take_profit?: number | null }
+  ): Promise<ContractUpdateResponse["contract_update"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: ContractUpdateResponse) => {
+          if (data.contract_update) {
+            resolve(data.contract_update)
+          } else {
+            reject(new Error("Failed to update contract"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        contract_update: 1,
+        contract_id: contractId,
+        limit_order: limitOrder,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Get the history of updates made to a contract
+   * @param contractId - The contract ID
+   * @param limit - Maximum number of historical updates (1-999, default 500)
+   */
+  async getContractUpdateHistory(
+    contractId: number,
+    limit: number = 500
+  ): Promise<ContractUpdateHistoryResponse["contract_update_history"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: ContractUpdateHistoryResponse) => {
+          if (data.contract_update_history) {
+            resolve(data.contract_update_history)
+          } else {
+            reject(new Error("Failed to get contract update history"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        contract_update_history: 1,
+        contract_id: contractId,
+        limit,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  // ==================== ACCOUNT MANAGEMENT ====================
+
+  /**
+   * Get account statement with transaction history
+   * @param description - Include full description (default: 1)
+   * @param limit - Number of transactions to return (default: 100)
+   * @param offset - Offset for pagination (default: 0)
+   */
+  async getStatement(
+    description: number = 1,
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<StatementResponse["statement"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: StatementResponse) => {
+          if (data.statement) {
+            resolve(data.statement)
+          } else {
+            reject(new Error("Failed to get statement"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        statement: 1,
+        description,
+        limit,
+        offset,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Get profit/loss summary for completed trades
+   * @param description - Include full description (default: 1)
+   * @param limit - Number of transactions to return (default: 25)
+   * @param offset - Offset for pagination (default: 0)
+   */
+  async getProfitTable(
+    description: number = 1,
+    limit: number = 25,
+    offset: number = 0
+  ): Promise<ProfitTableResponse["profit_table"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: ProfitTableResponse) => {
+          if (data.profit_table) {
+            resolve(data.profit_table)
+          } else {
+            reject(new Error("Failed to get profit table"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        profit_table: 1,
+        description,
+        limit,
+        offset,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Subscribe to real-time transaction notifications
+   * @param callback - Called for each transaction event
+   * @returns Unsubscribe function
+   */
+  subscribeTransactions(
+    callback: (transaction: TransactionStream["transaction"]) => void
+  ): () => void {
+    const reqId = this.getNextReqId()
+    const subscriptionKey = "transactions"
+
+    const handler = (data: DerivMessage) => {
+      if ("msg_type" in data && data.msg_type === "transaction" && "transaction" in data) {
+        callback((data as TransactionStream).transaction)
+      }
+    }
+
+    this.on("transaction", handler)
+
+    this.activeSubscriptions.set(subscriptionKey, {
+      type: 'proposal_open_contract',
+      params: {},
+      callback,
+    })
+
+    this.send({
+      transaction: 1,
+      subscribe: 1,
+      req_id: reqId,
+    })
+
+    return () => {
+      this.off("transaction", handler)
+      this.activeSubscriptions.delete(subscriptionKey)
+      this.send({
+        forget_all: "transaction",
+      })
+    }
+  }
+
+  // ==================== MARKET DATA ====================
+
+  /**
+   * Get trading times for all symbols
+   * @param date - Date in yyyy-mm-dd format, or "today"
+   */
+  async getTradingTimes(date: string = "today"): Promise<TradingTimesResponse["trading_times"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: TradingTimesResponse) => {
+          if (data.trading_times) {
+            resolve(data.trading_times)
+          } else {
+            reject(new Error("Failed to get trading times"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        trading_times: date,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  /**
+   * Get all contract categories available for the trading platform
+   */
+  async getContractsList(): Promise<ContractsListResponse["contracts_list"]> {
+    const reqId = this.getNextReqId()
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(reqId, {
+        resolve: (data: ContractsListResponse) => {
+          if (data.contracts_list) {
+            resolve(data.contracts_list)
+          } else {
+            reject(new Error("Failed to get contracts list"))
+          }
+        },
+        reject,
+      })
+
+      this.send({
+        contracts_list: 1,
+        req_id: reqId,
+      })
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(reqId)) {
+          this.pendingRequests.delete(reqId)
+          reject(new Error("Request timeout"))
+        }
+      }, 10000)
+    })
+  }
+
+  // ==================== REST API METHODS ====================
+
+  /**
+   * Get the base URL for REST API calls
+   */
+  private getRestBaseUrl(): string {
+    return import.meta.env.VITE_DERIV_REST_URL || "https://api.derivws.com"
+  }
+
+  /**
+   * Get OAuth authorization URL
+   */
+  private getOAuthUrl(): string {
+    return import.meta.env.VITE_DERIV_OAUTH_URL || "https://auth.deriv.com/oauth2/auth"
+  }
+
+  /**
+   * Get OAuth token URL
+   */
+  private getOAuthTokenUrl(): string {
+    return import.meta.env.VITE_DERIV_OAUTH_TOKEN_URL || "https://auth.deriv.com/oauth2/token"
+  }
+
+  /**
+   * Get all Options trading accounts via REST API
+   * @param accessToken - OAuth2 access token
+   */
+  async getAccounts(accessToken: string): Promise<DerivAccountsResponse> {
+    const baseUrl = this.getRestBaseUrl()
+    const response = await fetch(`${baseUrl}/trading/v1/options/accounts`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get accounts: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Create a new Options trading account via REST API
+   * @param accessToken - OAuth2 access token
+   * @param params - Account creation parameters
+   */
+  async createAccount(
+    accessToken: string,
+    params: CreateAccountParams
+  ): Promise<CreateAccountResponse> {
+    const baseUrl = this.getRestBaseUrl()
+    const response = await fetch(`${baseUrl}/trading/v1/options/accounts`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to create account: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Reset demo account balance via REST API
+   * @param accessToken - OAuth2 access token
+   * @param accountId - Demo account ID
+   */
+  async resetDemoBalance(
+    accessToken: string,
+    accountId: string
+  ): Promise<ResetDemoBalanceResponse> {
+    const baseUrl = this.getRestBaseUrl()
+    const response = await fetch(
+      `${baseUrl}/trading/v1/options/accounts/${accountId}/reset-demo-balance`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to reset demo balance: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get OTP for WebSocket authentication via REST API
+   * @param accessToken - OAuth2 access token
+   * @param accountId - Account ID to get OTP for
+   * @returns WebSocket URL with OTP embedded
+   */
+  async getWebSocketUrl(
+    accessToken: string,
+    accountId: string
+  ): Promise<OTPResponse> {
+    const baseUrl = this.getRestBaseUrl()
+    const response = await fetch(
+      `${baseUrl}/trading/v1/options/accounts/${accountId}/otp`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to get OTP: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Generate OAuth authorization URL with PKCE
+   * @param clientId - OAuth2 client ID
+   * @param redirectUri - Registered redirect URI
+   * @param scope - OAuth scope ("trade" or "admin")
+   * @param prompt - Optional prompt ("registration" for signup)
+   * @param utmParams - Optional UTM tracking parameters for partner signup
+   */
+  generateOAuthUrl(
+    clientId: string,
+    redirectUri: string,
+    scope: "trade" | "admin" = "trade",
+    prompt?: "registration",
+    utmParams?: {
+      sidc?: string
+      utm_campaign?: string
+      utm_medium?: string
+      utm_source?: string
+    }
+  ): { url: string; codeVerifier: string; state: string } {
+    // Generate PKCE code verifier (random 64-char string)
+    const array = crypto.getRandomValues(new Uint8Array(64))
+    const codeVerifier = Array.from(array)
+      .map((v) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"[v % 66])
+      .join("")
+
+    // Generate state for CSRF protection
+    const state = crypto.getRandomValues(new Uint8Array(16))
+      .reduce((s, b) => s + b.toString(16).padStart(2, "0"), "")
+
+    // Build URL parameters
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope,
+      state,
+      code_challenge_method: "S256",
+    })
+
+    // Add prompt for registration
+    if (prompt) {
+      params.set("prompt", prompt)
+    }
+
+    // Add UTM parameters if provided
+    if (utmParams) {
+      if (utmParams.sidc) params.set("sidc", utmParams.sidc)
+      if (utmParams.utm_campaign) params.set("utm_campaign", utmParams.utm_campaign)
+      if (utmParams.utm_medium) params.set("utm_medium", utmParams.utm_medium)
+      if (utmParams.utm_source) params.set("utm_source", utmParams.utm_source)
+    }
+
+    // Note: code_challenge is async, so we return it separately
+    // The caller should compute it and add to params before redirecting
+    return { url: `${this.getOAuthUrl()}?${params.toString()}`, codeVerifier, state }
+  }
+
+  /**
+   * Derive code_challenge from code_verifier
+   */
+  async deriveCodeChallenge(codeVerifier: string): Promise<string> {
+    const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))
+    return btoa(String.fromCharCode(...new Uint8Array(hash)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "")
+  }
+
+  /**
+   * Exchange authorization code for access token
+   * This should be called from a backend server, not the browser
+   * @param code - Authorization code from callback
+   * @param codeVerifier - Original PKCE code verifier
+   * @param clientId - OAuth2 client ID
+   * @param redirectUri - Registered redirect URI
+   */
+  async exchangeCodeForToken(
+    code: string,
+    codeVerifier: string,
+    clientId: string,
+    redirectUri: string
+  ): Promise<{ access_token: string; expires_in: number; token_type: string }> {
+    const response = await fetch(this.getOAuthTokenUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code,
+        code_verifier: codeVerifier,
+        redirect_uri: redirectUri,
+      }).toString(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Token exchange failed: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   ping(): void {

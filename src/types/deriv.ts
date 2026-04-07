@@ -244,24 +244,6 @@ export interface ServerTimeResponse {
   msg_type: "time"
 }
 
-export interface TradingTimes {
-  trading_times: Array<{
-    close: Array<{ open: string }>
-    events: Array<{ dates: string; descrip: string }>
-    name: string
-    open: Array<{ open: string }>
-    symbol: string
-    times: {
-      close: string[]
-      open: string[]
-    }
-  }>
-}
-
-export interface TradingTimesResponse {
-  trading_times: TradingTimes
-  msg_type: "trading_times"
-}
 
 // Chart Style Types
 export type ChartStyle = 'area' | 'line' | 'ohlc' | 'candlestick'
@@ -280,6 +262,13 @@ export type DerivMessage =
   | ProfitTableResponse
   | ServerTimeResponse
   | TradingTimesResponse
+  | TransactionStream
+  | SellResponse
+  | CancelResponse
+  | ContractUpdateResponse
+  | ContractUpdateHistoryResponse
+  | StatementResponse
+  | ContractsListResponse
   | { msg_type: "forget"; echo_req: { forget: string } }
   | { msg_type: "forget_all"; echo_req: { forget_all: string } }
   | { msg_type: "ping"; ping: number }
@@ -425,4 +414,208 @@ export interface TradingState {
   isTrading: boolean
   activeContracts: ProposalOpenContract[]
   recentTrades: ProfitTable["transactions"]
+}
+
+// Sell Response
+export interface SellResponse {
+  sell: {
+    balance_after: number
+    contract_id: number
+    reference_id: number
+    sold_for: number
+    transaction_id: number
+  }
+  msg_type: "sell"
+}
+
+// Cancel Response
+export interface CancelResponse {
+  cancel: {
+    balance_after: number
+    contract_id: number
+    reference_id: number
+    transaction_id: number
+  }
+  msg_type: "cancel"
+}
+
+// Contract Update
+export interface ContractUpdateRequest {
+  contract_id: number
+  limit_order: {
+    stop_loss?: number | null
+    take_profit?: number | null
+  }
+}
+
+export interface ContractUpdateResponse {
+  contract_update: {
+    contract_id: number
+    limit_order: {
+      stop_loss?: number
+      take_profit?: number
+    }
+  }
+  msg_type: "contract_update"
+}
+
+// Contract Update History
+export interface ContractUpdateHistoryResponse {
+  contract_update_history: Array<{
+    contract_id: number
+    limit_order: {
+      stop_loss?: number
+      take_profit?: number
+    }
+    update_time: number
+  }>
+  msg_type: "contract_update_history"
+}
+
+// Statement
+export interface StatementTransaction {
+  action_type: string
+  amount: number
+  balance: number
+  contract_id?: number
+  deposit_address?: string
+  from_loginid?: string
+  longcode?: string
+  reference_id?: number
+  transaction_time: number
+  transaction_type: string
+  withdrawal_address?: string
+}
+
+export interface StatementResponse {
+  statement: {
+    transactions: StatementTransaction[]
+    count: number
+  }
+  msg_type: "statement"
+}
+
+// Transaction Subscription
+export interface TransactionStream {
+  transaction: {
+    action: string
+    contract_id: number
+    currency: string
+    id: number
+    longcode: string
+    payout: number
+    purchase_time: number
+    shortcode: string
+    start_time: number
+    transaction_time: number
+    transaction_type: string
+    underlying: string
+  }
+  msg_type: "transaction"
+}
+
+// Trading Times
+export interface TradingTimesMarket {
+  name: string
+  submarkets: Array<{
+    name: string
+    symbols: Array<{
+      name: string
+      symbol: string
+      times: {
+        open: string[]
+        close: string[]
+      }
+      events: Array<{
+        dates: string
+        descrip: string
+      }>
+    }>
+  }>
+}
+
+export interface TradingTimesResponse {
+  trading_times: {
+    markets: TradingTimesMarket[]
+    trading_times_date: string
+  }
+  msg_type: "trading_times"
+}
+
+// Contracts List
+export interface ContractCategory {
+  contract_category: string
+  contract_types: string[]
+  display_name: string
+}
+
+export interface ContractsListResponse {
+  contracts_list: ContractCategory[]
+  msg_type: "contracts_list"
+}
+
+// REST API Types
+export interface DerivAccount {
+  account_id: string
+  balance: number
+  currency: string
+  group: string
+  status: string
+  account_type: string
+  created_at: string
+  email: string
+  last_access_at: string
+  name: string
+  server_id: string
+  rights: Record<string, unknown>
+}
+
+export interface DerivAccountsResponse {
+  data: DerivAccount[]
+  meta: {
+    endpoint: string
+    method: string
+    timing: number
+  }
+}
+
+export interface CreateAccountParams {
+  currency: string
+  group: string
+  account_type: "demo" | "real"
+}
+
+export interface CreateAccountResponse {
+  data: DerivAccount[]
+  meta: {
+    endpoint: string
+    method: string
+    timing: number
+  }
+}
+
+export interface ResetDemoBalanceResponse {
+  data: {
+    account_id: string
+    balance: number
+    currency: string
+    status: string
+    account_type: string
+  }
+  meta: {
+    endpoint: string
+    method: string
+    timing: number
+  }
+}
+
+export interface OTPResponse {
+  data: {
+    url: string
+  }
+  meta: {
+    endpoint: string
+    method: string
+    timing: number
+  }
 }
