@@ -54,21 +54,15 @@ class DerivAPI {
   private pingInterval: ReturnType<typeof setInterval> | null = null
   private lastPong: number = Date.now()
   private shouldReconnect: boolean = true // Flag to prevent reconnection when intentionally disconnecting
-  private _token: string | null = null
   private pendingRequestsQueue: Array<() => void> = [] // Queue for requests sent before WebSocket is ready
   private isSubscribing: boolean = false // Mutex to prevent concurrent subscription requests
   private isHandlingAuth: boolean = false // Mutex to prevent duplicate auth handling
-  private _hasSentAuth: boolean = false // Guard to prevent sending auth twice per connection
 
   constructor() {
     // Don't auto-connect in constructor - let the app control when to connect
     // This prevents issues with React Strict Mode running effects twice
   }
 
-  // Set authentication token
-  setToken(token: string): void {
-    this._token = token
-  }
 
   /**
    * 🧹 CLEAN SLATE STARTUP - Emergency reset of all subscriptions
@@ -182,7 +176,6 @@ class DerivAPI {
           this.isConnecting = false
           this.isConnectedState = false
           this.isAuthorized = false
-          this._hasSentAuth = false
           this.emit("connection", { connected: false })
           this.attemptReconnect()
         }
@@ -261,7 +254,6 @@ class DerivAPI {
           this.isConnecting = false
           this.isConnectedState = false
           this.isAuthorized = false
-          this._hasSentAuth = false // Reset auth flag to allow re-authorization on reconnect
           this.emit("connection", { connected: false })
           this.attemptReconnect()
         }
@@ -1712,7 +1704,6 @@ class DerivAPI {
     this.isConnecting = false
     this.isConnectedState = false
     this.isAuthorized = false
-    this._hasSentAuth = false // Reset auth flag
     this.handlers.clear()
     this.pendingRequests.clear()
     this.subscriptions.clear()
