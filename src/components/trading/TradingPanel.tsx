@@ -5,6 +5,7 @@ import { Select } from "../ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { useTradingStore } from "../../stores/tradingStore"
 import { getDerivAPI } from "../../lib/deriv-api"
+import { useAccount } from "../../contexts/AccountContext"
 import { formatCurrency, formatNumber, cn } from "../../lib/utils"
 import { TrendingUp, TrendingDown, Loader2, Target } from "lucide-react"
 import type { ContractType, DurationUnit, TradeParams } from "../../types/deriv"
@@ -41,6 +42,7 @@ const TradingPanel: React.FC = () => {
     symbols,
     isSymbolLoading,
   } = useTradingStore()
+  const { accountType, balance: accountBalance, updateBalance } = useAccount()
   const [amount, setAmount] = useState<string>("10")
   const [duration, setDuration] = useState<string>("5")
   const [durationUnit, setDurationUnit] = useState<DurationUnit>("t")
@@ -252,6 +254,35 @@ const TradingPanel: React.FC = () => {
     }
   }, [currentSymbol, amount, duration, durationUnit, setIsTrading, barrierOffset, precision, contractCategory, isPositiveOffset])
 
+  // Demo mode: simulate trade with 50/50 win chance
+  const simulateDemoTrade = useCallback((_contractType: ContractType): Promise<void> => {
+    return new Promise((resolve) => {
+      const tradeAmount = parseFloat(amount)
+      const payout = proposal?.payout || tradeAmount * 1.8 // 80% payout for demo
+      
+      // Simulate trading duration
+      const tradeDuration = durationUnit === 't' ? 1000 : parseInt(duration) * 1000
+      const maxDuration = Math.min(tradeDuration, 5000) // Cap at 5 seconds for demo
+      
+      setTimeout(() => {
+        // 50/50 win chance for demo
+        const won = Math.random() > 0.5
+        
+        if (won) {
+          // Win: add profit to balance
+          const profit = payout - tradeAmount
+          updateBalance(accountBalance + profit)
+        } else {
+          // Loss: subtract stake from balance
+          updateBalance(accountBalance - tradeAmount)
+        }
+        
+        setProposal(null)
+        resolve()
+      }, maxDuration)
+    })
+  }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance])
+
   const executeTrade = useCallback(async (contractType: ContractType) => {
     if (!proposal) {
       await getProposal(contractType)
@@ -260,15 +291,21 @@ const TradingPanel: React.FC = () => {
     setError(null)
     setIsTrading(true)
     try {
-      const api = getDerivAPI()
-      await api.buyContract(proposal.id, proposal.ask_price)
+      if (accountType === "demo") {
+        // Demo mode: simulate trade
+        await simulateDemoTrade(contractType)
+      } else {
+        // Real mode: use API
+        const api = getDerivAPI()
+        await api.buyContract(proposal.id, proposal.ask_price)
+      }
       setProposal(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to execute trade")
     } finally {
       setIsTrading(false)
     }
-  }, [proposal, setIsTrading, getProposal])
+  }, [proposal, setIsTrading, getProposal, accountType, simulateDemoTrade])
 
   // Whether to show barrier controls
   const showBarrierControls = contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH"

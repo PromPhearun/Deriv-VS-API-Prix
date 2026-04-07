@@ -25,8 +25,10 @@ import type {
   OTPResponse,
 } from "../types/deriv"
 
-const DERIV_APP_ID = import.meta.env.VITE_DERIV_APP_ID || "1089"
-const WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`
+// New Deriv API uses OTP-based authentication
+// For public data (ticks, symbols), use the public endpoint
+// For authenticated data, we need to get OTP via REST API first
+const WS_PUBLIC_URL = "wss://api.derivws.com/trading/v1/options/ws/public"
 
 type MessageHandler = (data: DerivMessage) => void
 
@@ -76,22 +78,21 @@ class DerivAPI {
   async cleanSlateStartup(): Promise<void> {
     // Only run if WebSocket is connected and authorized
     if (!this.isReady()) {
-      console.warn("[DerivAPI] ⚠️ Not ready for clean slate, skipping")
+      console.debug("[DerivAPI] Not ready for clean slate, skipping (expected during React Strict Mode)")
       return
     }
 
     console.log("[DerivAPI] 🧹 Clean slate startup - clearing all ghost subscriptions...")
     
-    // Forget BOTH types to ensure no stale subscriptions remain
-    // Use Promise.allSettled so one failure doesn't block the other
+    // Forget ticks and candles subscriptions
+    // Note: 'proposal_open_contract' is not supported on public endpoint
     const results = await Promise.allSettled([
       this.forgetAll('ticks'),
       this.forgetAll('candles'),
-      this.forgetAll('proposal_open_contract')
     ])
     
     results.forEach((result, i) => {
-      const types = ['ticks', 'candles', 'proposal_open_contract']
+      const types = ['ticks', 'candles']
       if (result.status === 'fulfilled') {
         console.log(`[DerivAPI] ✅ Cleaned up ${types[i]} subscriptions`)
       } else {
@@ -111,6 +112,85 @@ class DerivAPI {
       return
     }
     return this.connect()
+  }
+
+  /**
+   * Connect to Deriv API using OTP-authenticated WebSocket URL
+   * @param otpUrl - WebSocket URL with OTP from getWebSocketUrl() REST call
+   */
+  async connectWithOTP(otpUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        resolve()
+        return
+      }
+
+      if (this.isConnecting) {
+        const checkConnection = setInterval(() => {
+          if (this.isConnectedState) {
+            clearInterval(checkConnection)
+            resolve()
+          } else if (!this.isConnecting) {
+            clearInterval(checkConnection)
+            reject(new Error("Connection failed"))
+          }
+        }, 100)
+        return
+      }
+
+      this.isConnecting = true
+
+      try {
+        console.log("[DerivAPI] Connecting with OTP-authenticated URL...")
+        this.ws = new WebSocket(otpUrl)
+
+        this.ws.onopen = () => {
+          console.log("[DerivAPI] Connected to WebSocket (OTP authenticated)")
+          this.isConnecting = false
+          this.isConnectedState = true
+          this.reconnectAttempts = 0
+          this.lastPong = Date.now()
+
+          // OTP-authenticated connection is immediately authorized
+          this.isAuthorized = true
+
+          this.startPingInterval()
+          this.emit("connection", { connected: true, authenticated: true })
+          
+          this.flushRequestQueue()
+          resolve()
+        }
+
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data) as DerivMessage
+            this.handleMessage(data)
+          } catch (error) {
+            console.error("[DerivAPI] Failed to parse message:", error)
+          }
+        }
+
+        this.ws.onerror = (error) => {
+          console.error("[DerivAPI] WebSocket error:", error)
+          this.isConnecting = false
+          this.emit("error", { error: "WebSocket connection error" })
+          reject(error)
+        }
+
+        this.ws.onclose = () => {
+          console.log("[DerivAPI] WebSocket closed")
+          this.isConnecting = false
+          this.isConnectedState = false
+          this.isAuthorized = false
+          this.hasSentAuth = false
+          this.emit("connection", { connected: false })
+          this.attemptReconnect()
+        }
+      } catch (error) {
+        this.isConnecting = false
+        reject(error)
+      }
+    })
   }
 
   private connect(): Promise<void> {
@@ -138,36 +218,26 @@ class DerivAPI {
       this.isConnecting = true
 
       try {
-        this.ws = new WebSocket(WS_URL)
+        this.ws = new WebSocket(WS_PUBLIC_URL)
 
         this.ws.onopen = () => {
-          console.log("[DerivAPI] Connected to WebSocket")
+          console.log("[DerivAPI] Connected to WebSocket (public endpoint)")
           this.isConnecting = false
           this.isConnectedState = true
           this.reconnectAttempts = 0
           this.lastPong = Date.now()
 
+          // New Deriv API public endpoint doesn't require authorize message
+          // Mark as authorized immediately for public data access
+          this.isAuthorized = true
+
           // Emit connection event
           this.startPingInterval()
           this.emit("connection", { connected: true })
           
-          // Wait for WebSocket to be fully OPEN before flushing queue
-          const waitForOpen = () => {
-            if (this.ws?.readyState === WebSocket.OPEN) {
-              // Send authorization immediately - no artificial delay
-              // Auth will complete asynchronously and flush the queue
-              if (this.token) {
-                this.sendAuthorization()
-              }
-              // Flush any other queued requests now (they'll be re-queued if not authed yet)
-              // The flushRequestQueue will run them once auth completes
-              resolve()
-            } else {
-              // Check again in 50ms
-              setTimeout(waitForOpen, 50)
-            }
-          }
-          waitForOpen()
+          // Flush any queued requests
+          this.flushRequestQueue()
+          resolve()
         }
 
         this.ws.onmessage = (event) => {
@@ -242,9 +312,6 @@ class DerivAPI {
     } catch (e) { /* ignore - subscription may not exist */ }
     try {
       await this.forgetAll('candles')
-    } catch (e) { /* ignore - subscription may not exist */ }
-    try {
-      await this.forgetAll('proposal_open_contract')
     } catch (e) { /* ignore - subscription may not exist */ }
 
     // ✅ FIX: Don't emit the "resubscribed" event
@@ -450,23 +517,6 @@ class DerivAPI {
     this.ws.send(JSON.stringify(message))
   }
 
-  // Send authorization request to Deriv API
-  private sendAuthorization(): void {
-    if (!this.token) {
-      return
-    }
-    
-    // Prevent sending auth twice (handles React Strict Mode double-invocation)
-    if (this.hasSentAuth) {
-      return
-    }
-    this.hasSentAuth = true
-    
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ authorize: this.token }))
-    }
-  }
-
   private flushRequestQueue(): void {
     const count = this.pendingRequestsQueue.length
     if (count === 0) {
@@ -534,8 +584,13 @@ class DerivAPI {
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(reqId, {
         resolve: (data: any) => {
+          console.log("[DerivAPI] Active symbols response:", data)
+          // Handle both old and new API response formats
           if (data.active_symbols) {
             resolve(data.active_symbols)
+          } else if (data.data) {
+            // New API format: { data: { active_symbols: [...] } }
+            resolve(data.data.active_symbols || data.data || [])
           } else {
             reject(new Error("Failed to get active symbols"))
           }
@@ -545,7 +600,6 @@ class DerivAPI {
 
       this.send({
         active_symbols: "brief",
-        product_type: "basic",
         req_id: reqId,
       })
 
@@ -793,6 +847,8 @@ class DerivAPI {
         resolve: (data: any) => {
           if (data.history) {
             resolve(data.history)
+          } else if (data.error) {
+            reject(new Error(data.error.message || "Failed to get tick history"))
           } else {
             reject(new Error("Failed to get tick history"))
           }
@@ -800,10 +856,12 @@ class DerivAPI {
         reject,
       })
 
+      // New Deriv API may require different parameters
       this.send({
         ticks_history: symbol,
         count,
         end: "latest",
+        style: "ticks",
         req_id: reqId,
       })
 

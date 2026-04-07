@@ -925,14 +925,102 @@ This is the correct implementation of the Deriv API subscription protocol requir
 
 ---
 
+### Dual Account System: Demo & Real (April 3, 2026)
+
+**Problem:** The application was hardcoded to use a single Deriv API token, with no way for users to:
+1. Test trade the platform without risking real money
+2. Connect their own Deriv accounts
+3. See their balance in real-time
+4. Switch between demo and live trading modes
+
+**Solution: Implemented Dual Account System with Demo Simulation**
+
+1. **Created AccountContext** (`src/contexts/AccountContext.tsx`):
+   - New React context managing account state: `AccountType = 'demo' | 'real'`
+   - Demo account: hardcoded `$10,000 USD` balance, simulated trades (50/50 win chance)
+   - Real account: uses Deriv API `authorize` + `balance` subscription for real-time updates
+   - Persists account type selection in `localStorage` for session continuity
+   - Provides `setAccountType()`, `connectReal()`, `disconnect()`, `updateBalance()` actions
+
+2. **Created AccountSwitcher Component** (`src/components/account/AccountSwitcher.tsx`):
+   - Toggle button between Demo/Real modes with visual feedback
+   - Shows current balance with currency formatting
+   - "Connect to Deriv" button for demo → real transition
+   - "Switch to Demo" button for real → demo transition
+   - Displays connection status and account type badge
+
+3. **Updated TradingPanel for Demo Mode** (`src/components/trading/TradingPanel.tsx`):
+   - Checks `accountType` from context before executing trades
+   - Demo mode: `simulateDemoTrade()` with 50/50 win chance, 80% payout ratio
+   - Real mode: uses existing Deriv API `buyContract()` call
+   - Updates demo balance on trade completion (win/loss)
+   - Capped demo trade duration at 5 seconds for better UX
+
+4. **Updated AccountSnapshot with Balance** (`src/components/account/AccountSnapshot.tsx`):
+   - Added prominent balance display at top of card
+   - Account type badge (Demo/Real) in header
+   - Existing P&L and stats still displayed below
+
+5. **Added Balance Subscription to DerivAPI** (`src/lib/deriv-api.ts`):
+   - New `subscribeBalance(callback)` method for real-time balance updates
+   - Sends `{ balance: 1, subscribe: 1, req_id }` to Deriv API
+   - Returns unsubscribe function for cleanup
+   - Used by AccountContext when real account is active
+
+6. **Updated App.tsx**:
+   - Wrapped entire app in `AccountProvider`
+   - Added `AccountSwitcher` to the trading panel sidebar
+   - Maintains existing chart and trading functionality
+
+**Demo Trading Logic:**
+```typescript
+const simulateDemoTrade = useCallback((contractType: ContractType): Promise<void> => {
+  return new Promise((resolve) => {
+    const tradeAmount = parseFloat(amount)
+    const payout = proposal?.payout || tradeAmount * 1.8 // 80% payout for demo
+    
+    const tradeDuration = durationUnit === 't' ? 1000 : parseInt(duration) * 1000
+    const maxDuration = Math.min(tradeDuration, 5000) // Cap at 5 seconds
+    
+    setTimeout(() => {
+      const won = Math.random() > 0.5 // 50/50 win chance
+      
+      if (won) {
+        updateBalance(accountBalance + (payout - tradeAmount))
+      } else {
+        updateBalance(accountBalance - tradeAmount)
+      }
+      
+      setProposal(null)
+      resolve()
+    }, maxDuration)
+  })
+}, [...])
+```
+
+**Files Modified:**
+- `src/contexts/AccountContext.tsx` — **NEW** account management context
+- `src/components/account/AccountSwitcher.tsx` — **NEW** demo/real toggle UI
+- `src/components/trading/TradingPanel.tsx` — Demo mode trade simulation
+- `src/components/account/AccountSnapshot.tsx` — Balance display
+- `src/lib/deriv-api.ts` — Added `subscribeBalance()` method
+- `src/App.tsx` — AccountProvider wrapper, AccountSwitcher integration
+- `vibe-logs.md` — This documentation entry
+
+**Result:** Users can now:
+- Start with $10,000 demo balance for risk-free trading practice
+- Switch to real account by connecting via API token
+- See real-time balance updates when using a real account
+- Toggle between modes seamlessly with localStorage persistence
+- Experience realistic demo trading with 50/50 outcomes
+
+---
+
 ## Future Enhancements
-1. OAuth 2.0 with PKCE
-2. Account dashboard
-3. Advanced strategies with backtesting
-4. Mobile app (React Native)
-5. Social features
-6. Volume indicators for OHLC data
-7. Custom time intervals for OHLC (1m, 5m, 15m, 1h)
+1. Full OAuth 2.0 flow with Deriv (currently uses direct API token)
+2. Advanced strategies with backtesting
+3. Mobile app (React Native)
+4. Social features
 
 ## Metrics
 - **Dev Time**: ~2 hours

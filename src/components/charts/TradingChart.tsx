@@ -216,47 +216,8 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
         console.warn("[TradingChart] Failed to set tick data, resetting:", error)
         try { seriesRef.current.setData([]) } catch { /* ignore */ }
       }
-    } else if (chartStyle === 'candlestick') {
-      // Use tick data for candlestick chart - convert ticks to candlestick format
-      if (tickHistory.length === 0) return
-
-      const candleData: (CandlestickData<Time> | null)[] = tickHistory.map((tick) => {
-        // Add strict null checks
-        if (!tick || typeof tick.epoch === 'undefined' || typeof tick.quote === 'undefined') {
-          return null
-        }
-        const price = Number(tick.quote)
-        return {
-          time: tick.epoch as Time,
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-        }
-      })
-
-      // Filter out null entries
-      const validCandleData = candleData.filter((item): item is CandlestickData<Time> => item !== null)
-
-      if (validCandleData.length === 0) return
-
-      // Sort by time to ensure strictly ascending order
-      validCandleData.sort((a, b) => (a.time as number) - (b.time as number))
-
-      // Remove duplicate time entries
-      const filteredCandleData = validCandleData.filter((candle, index) => {
-        if (index === 0) return true
-        return candle.time !== validCandleData[index - 1].time
-      })
-
-      try {
-        ; (seriesRef.current as ISeriesApi<"Candlestick">).setData(filteredCandleData)
-      } catch (error) {
-        console.warn("[TradingChart] Failed to set tick data for candlestick, resetting:", error)
-        try { seriesRef.current.setData([]) } catch { /* ignore */ }
-      }
     } else {
-      // Use OHLC data for OHLC chart style only
+      // Use real OHLC data for both 'ohlc' and 'candlestick' chart styles
       if (ohlcHistory.length === 0) return
 
       const candleData: (CandlestickData<Time> | null)[] = ohlcHistory.map((ohlc) => {
@@ -329,7 +290,8 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
     }
 
     // If no barrier or no data, don't draw
-    const hasData = chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick'
+    // 'ohlc' and 'candlestick' both use OHLC data, 'area' and 'line' use tick data
+    const hasData = chartStyle === 'area' || chartStyle === 'line'
       ? tickHistory.length > 0
       : ohlcHistory.length > 0
 

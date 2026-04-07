@@ -1,11 +1,14 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { useTradingStore } from "../../stores/tradingStore"
+import { useAccount } from "../../contexts/AccountContext"
 import { formatCurrency, formatPercentage } from "../../lib/utils"
-import { Wallet, TrendingUp, TrendingDown, Activity } from "lucide-react"
+import { Wallet, TrendingUp, TrendingDown, Activity, ShieldCheck, User } from "lucide-react"
+import { cn } from "../../lib/utils"
 
 const AccountSnapshot: React.FC = () => {
   const { activeContracts, recentTrades } = useTradingStore()
+  const { accountType, balance, currency } = useAccount()
 
   const totalProfit = recentTrades.reduce((sum, trade) => sum + trade.profit, 0)
   const winRate = recentTrades.length > 0
@@ -14,15 +17,39 @@ const AccountSnapshot: React.FC = () => {
 
   const activePnL = activeContracts.reduce((sum, contract) => sum + contract.profit, 0)
 
+  const isDemo = accountType === "demo"
+
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Wallet className="h-5 w-5" />
-          Account Snapshot
+        <CardTitle className="text-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Account Snapshot
+          </div>
+          <span className={cn(
+            "text-xs px-2 py-1 rounded-full font-medium",
+            isDemo ? "bg-muted text-muted-foreground" : "bg-green-500/20 text-green-500"
+          )}>
+            {isDemo ? (
+              <span className="flex items-center gap-1"><User className="h-3 w-3" /> Demo</span>
+            ) : (
+              <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Real</span>
+            )}
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Balance Display */}
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground mb-1">
+            {isDemo ? "Demo Balance" : "Real Balance"}
+          </p>
+          <p className="text-2xl font-bold">
+            {formatCurrency(balance, currency || "USD")}
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">Active P&L</p>

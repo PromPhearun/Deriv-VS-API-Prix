@@ -1,9 +1,11 @@
 import { useEffect, useCallback, useRef } from "react"
 import { getDerivAPI } from "./lib/deriv-api"
 import { useTradingStore } from "./stores/tradingStore"
+import { AccountProvider } from "./contexts/AccountContext"
 import TradingChart from "./components/charts/TradingChart"
 import TradingPanel from "./components/trading/TradingPanel"
 import AccountSnapshot from "./components/account/AccountSnapshot"
+import AccountSwitcher from "./components/account/AccountSwitcher"
 import AssetSelector from "./components/trading/AssetSelector"
 import ChartStyleSelector from "./components/charts/ChartStyleSelector"
 import ErrorBoundary from "./components/ui/ErrorBoundary"
@@ -75,7 +77,7 @@ function App() {
         }
       }
 
-      if (style === 'area' || style === 'line' || style === 'candlestick') {
+      if (style === 'area' || style === 'line') {
         activeStreamRef.current = 'ticks'
         // Unsubscribe from OHLC first if active
         if (ohlcUnsubscribeRef.current) {
@@ -93,6 +95,7 @@ function App() {
         })
         console.log("[App] ✅ Tick subscription successful for:", symbol)
       } else {
+        // 'ohlc' and 'candlestick' both use real OHLC data with proper candles
         activeStreamRef.current = 'ohlc'
         // Unsubscribe from ticks first if active
         if (tickUnsubscribeRef.current) {
@@ -159,15 +162,17 @@ function App() {
       // Initialize the connection
       await api.initialize()
       
-      setConnectionState({ isConnected: true, isConnecting: false, lastConnected: Date.now() })
-      
       // 🧹 CLEAN SLATE: Force termination of ALL ghost subscriptions before any new ones
       // This prevents the "logic deadlock" where stale subscriptions block new data
+      // Run AFTER connection is established to ensure API is ready
       console.log("[App] 🧹 Running clean slate startup...")
       await api.cleanSlateStartup()
       
-      // Clear local state to ensure fresh start
+      // Clear local state to ensure fresh start (done AFTER clean slate)
       clearState()
+      
+      // Set connection state AFTER clearState (which resets isConnected to false)
+      setConnectionState({ isConnected: true, isConnecting: false, lastConnected: Date.now() })
 
       const activeSymbols = await api.getActiveSymbols()
       setSymbols(activeSymbols)
@@ -176,7 +181,7 @@ function App() {
       loadingSymbolRef.current = currentSymbol
 
       // Fetch appropriate history based on chart style
-      if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
+      if (chartStyle === 'area' || chartStyle === 'line') {
         const history = await api.getTickHistory(currentSymbol, 1000)
         const ticks = history.prices.map((price, i) => ({
           epoch: history.times[i],
@@ -185,7 +190,7 @@ function App() {
         }))
         setTickHistory(ticks)
       } else {
-        // Fetch OHLC history for OHLC chart style
+        // Fetch OHLC history for OHLC and candlestick chart styles (real candles)
         try {
           const ohlcData = await api.getOHLCHistory(currentSymbol, 60, 500)
           const ohlcHistory = ohlcData.candles.map((c) => ({
@@ -272,7 +277,7 @@ function App() {
       
       try {
         // Fetch appropriate history based on chart style
-        if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
+        if (chartStyle === 'area' || chartStyle === 'line') {
           const history = await api.getTickHistory(symbolToLoad, 1000)
           if (loadingSymbolRef.current !== symbolToLoad) return
           const ticks = history.prices.map((price, i) => ({
@@ -282,6 +287,7 @@ function App() {
           }))
           setTickHistory(ticks)
         } else {
+          // 'ohlc' and 'candlestick' both use real OHLC data
           try {
             const ohlcData = await api.getOHLCHistory(symbolToLoad, 60, 500)
             if (loadingSymbolRef.current !== symbolToLoad) return
@@ -338,7 +344,7 @@ function App() {
       
       // Fetch appropriate history for the new chart style
       try {
-        if (chartStyle === 'area' || chartStyle === 'line' || chartStyle === 'candlestick') {
+        if (chartStyle === 'area' || chartStyle === 'line') {
           const history = await api.getTickHistory(currentSymbol, 1000)
           const ticks = history.prices.map((price, i) => ({
             epoch: history.times[i],
@@ -347,6 +353,7 @@ function App() {
           }))
           setTickHistory(ticks)
         } else {
+          // 'ohlc' and 'candlestick' both use real OHLC data
           try {
             const ohlcData = await api.getOHLCHistory(currentSymbol, 60, 500)
             const ohlcHistory = ohlcData.candles.map((c) => ({
@@ -388,14 +395,16 @@ function App() {
   const firstTick = tickHistory?.[0]
   
   // Calculate High/Low based on chart style
-  // For candlestick, now use tick data (same as area/line)
-  const highValue = tickHistory?.length > 0
-    ? Math.max(...tickHistory.map((t) => t?.quote ?? 0))
-    : null
+  // For 'ohlc' and 'candlestick', use OHLC high/low; for 'area'/'line', use tick quotes
+  const useOhlcData = chartStyle === 'ohlc' || chartStyle === 'candlestick'
   
-  const lowValue = tickHistory?.length > 0
-    ? Math.min(...tickHistory.map((t) => t?.quote ?? 0))
-    : null
+  const highValue = useOhlcData
+    ? (ohlcHistory?.length > 0 ? Math.max(...ohlcHistory.map((c) => c?.high ?? 0)) : null)
+    : (tickHistory?.length > 0 ? Math.max(...tickHistory.map((t) => t?.quote ?? 0)) : null)
+  
+  const lowValue = useOhlcData
+    ? (ohlcHistory?.length > 0 ? Math.min(...ohlcHistory.map((c) => c?.low ?? 0)) : null)
+    : (tickHistory?.length > 0 ? Math.min(...tickHistory.map((t) => t?.quote ?? 0)) : null)
   
   const priceChange = lastTick && secondLastTick
     ? lastTick.quote - secondLastTick.quote
@@ -405,7 +414,8 @@ function App() {
     : 0
 
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <AccountProvider>
+      <div className="min-h-screen bg-background text-foreground dark">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -489,10 +499,10 @@ function App() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-muted-foreground">
-                    {chartStyle === 'ohlc' ? 'Candles' : 'Ticks'}
+                    {chartStyle === 'ohlc' || chartStyle === 'candlestick' ? 'Candles' : 'Ticks'}
                   </p>
                   <p className="text-lg font-semibold">
-                    {chartStyle === 'ohlc' ? ohlcHistory.length : totalTicksReceived}
+                    {chartStyle === 'ohlc' || chartStyle === 'candlestick' ? ohlcHistory.length : totalTicksReceived}
                   </p>
                 </CardContent>
               </Card>
@@ -500,12 +510,14 @@ function App() {
           </div>
 
           <div className="lg:col-span-1 space-y-4">
+            <AccountSwitcher />
             <TradingPanel />
             <AccountSnapshot />
           </div>
         </div>
       </main>
     </div>
+    </AccountProvider>
   )
 }
 
