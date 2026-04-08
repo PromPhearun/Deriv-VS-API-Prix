@@ -25,10 +25,9 @@ import type {
   OTPResponse,
 } from "../types/deriv"
 
-// New Deriv API uses OTP-based authentication
-// For public data (ticks, symbols), use the public endpoint
-// For authenticated data, we need to get OTP via REST API first
-const WS_PUBLIC_URL = "wss://api.derivws.com/trading/v1/options/ws/public"
+// Deriv API WebSocket endpoint
+// Uses standard websocket endpoint to get ALL active symbols (forex, commodities, indices, crypto, etc.)
+const WS_PUBLIC_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089"
 
 type MessageHandler = (data: DerivMessage) => void
 
@@ -880,20 +879,25 @@ class DerivAPI {
   async getProposal(params: TradeParams): Promise<ProposalResponse["proposal"]> {
     const reqId = this.getNextReqId()
 
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(reqId, {
-        resolve: (data: ProposalResponse) => {
-          if (data.proposal) {
-            resolve(data.proposal)
-          } else {
-            reject(new Error("Failed to get proposal"))
-          }
-        },
-        reject,
-      })
+    console.log("[DerivAPI] getProposal called with params:", params)
 
-      // New Deriv API uses 'underlying' instead of 'symbol'
-      this.send({
+    return new Promise((resolve, reject) => {
+      // Listen for proposal event instead of relying on echo_req matching
+      const handler = (data: any) => {
+        console.log("[DerivAPI] Received proposal response:", data)
+        if (data.proposal) {
+          this.off("proposal", handler)
+          resolve(data.proposal)
+        } else if (data.error) {
+          this.off("proposal", handler)
+          reject(new Error(data.error.message || "Failed to get proposal"))
+        }
+      }
+
+      this.on("proposal", handler)
+
+      // Use 'symbol' parameter (not 'underlying')
+      const request = {
         proposal: 1,
         amount: params.amount,
         basis: params.basis,
@@ -901,17 +905,26 @@ class DerivAPI {
         currency: params.currency || "USD",
         duration: params.duration,
         duration_unit: params.duration_unit,
-        underlying: params.symbol,
+        symbol: params.symbol,
         req_id: reqId,
         ...(params.barrier && { barrier: params.barrier }),
-      })
+      }
 
-      setTimeout(() => {
-        if (this.pendingRequests.has(reqId)) {
-          this.pendingRequests.delete(reqId)
-          reject(new Error("Request timeout"))
-        }
-      }, 10000)
+      console.log("[DerivAPI] Sending proposal request:", request)
+      this.send(request)
+
+      // Timeout after 15 seconds
+      const timeout = setTimeout(() => {
+        this.off("proposal", handler)
+        reject(new Error("Request timeout - no proposal response received"))
+      }, 15000)
+
+      // Clean up timeout on resolution
+      const originalResolve = resolve
+      resolve = (value: any) => {
+        clearTimeout(timeout)
+        originalResolve(value)
+      }
     })
   }
 

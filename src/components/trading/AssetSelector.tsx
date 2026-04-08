@@ -40,17 +40,30 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
   const groupedSymbols = useMemo(() => {
     const grouped: GroupedSymbols = {}
     
+    // Process all symbols, using fallbacks for missing fields
     symbols.forEach((symbol) => {
-      const market = symbol.market_display_name
+      // Skip completely invalid symbols
+      if (!symbol || !symbol.symbol) {
+        return
+      }
+      
+      // Use fallback values for display_name if missing
+      const enhancedSymbol = {
+        ...symbol,
+        display_name: symbol.display_name || symbol.symbol,
+        market_display_name: symbol.market_display_name || "Other Assets"
+      }
+      
+      const market = enhancedSymbol.market_display_name
       if (!grouped[market]) {
         grouped[market] = []
       }
-      grouped[market].push(symbol)
+      grouped[market].push(enhancedSymbol)
     })
 
     // Sort symbols within each market by display_order
     Object.keys(grouped).forEach((market) => {
-      grouped[market].sort((a, b) => a.display_order - b.display_order)
+      grouped[market].sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
     })
 
     return grouped
@@ -87,7 +100,9 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
   // Initialize with current symbol's market expanded
   useEffect(() => {
     if (currentSymbolData && expandedMarkets.size === 0) {
-      setExpandedMarkets(new Set([currentSymbolData.market_display_name]))
+      if (currentSymbolData?.market_display_name) {
+        setExpandedMarkets(new Set([currentSymbolData.market_display_name]))
+      }
     }
   }, [currentSymbolData, expandedMarkets.size])
 
@@ -262,7 +277,7 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
                               <span className="font-medium text-sm truncate">
                                 {symbol.display_name}
                               </span>
-                              {symbol.exchange_is_open ? (
+                              {symbol.exchange_is_open === 1 ? (
                                 <Wifi className="h-3 w-3 text-profit flex-shrink-0" />
                               ) : (
                                 <WifiOff className="h-3 w-3 text-muted-foreground flex-shrink-0" />
