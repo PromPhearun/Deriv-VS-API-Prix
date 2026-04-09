@@ -60,8 +60,11 @@ interface TradingState extends ConnectionState {
   setBarrierOffset: (offset: number | null) => void
   setBarrierOffsetRange: (min: number | null, max: number | null) => void
   setPipSize: (pipSize: number | null) => void
+  fetchSymbols: () => Promise<void>
   clearState: () => void
 }
+
+import { getDerivAPI } from "../lib/deriv-api"
 
 const MAX_TICK_HISTORY = 1000
 const MAX_OHLC_HISTORY = 500
@@ -258,6 +261,22 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   setBarrierOffset: (offset) => set({ barrierOffset: offset }),
   setBarrierOffsetRange: (min, max) => set({ minBarrierOffset: min, maxBarrierOffset: max }),
   setPipSize: (pipSize) => set({ pipSize }),
+
+  fetchSymbols: async () => {
+    const api = getDerivAPI()
+    set({ isSymbolLoading: true })
+    try {
+      const allSymbols = await api.getActiveSymbols()
+      
+      // Use all symbols returned by the API - it already filters appropriately
+      // The API returns only valid, tradeable symbols
+      console.log(`[TradingStore] Loaded ${allSymbols.length} symbols from API`)
+      set({ symbols: allSymbols, isSymbolLoading: false })
+    } catch (error) {
+      console.error("Failed to fetch symbols", error)
+      set({ isSymbolLoading: false })
+    }
+  },
 
   clearState: () => set({
     symbols: [],

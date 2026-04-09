@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react"
+import React, { useEffect, useCallback, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { useAccount } from "../../contexts/AccountContext"
@@ -13,6 +13,7 @@ interface AccountSwitcherProps {
 
 const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
   const { accountType, balance, currency, loginId, isConnecting, setAccountType, connectReal, disconnect } = useAccount()
+  const [error, setError] = useState<string | null>(null)
 
   const isDemo = accountType === "demo"
 
@@ -33,10 +34,17 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
 
   const handleOAuthCallback = useCallback(async (code: string, codeVerifier: string) => {
     try {
+      setError(null)
       const clientId = import.meta.env.VITE_DERIV_OAUTH_CLIENT_ID
-      const redirectUri = "https://promotrade.netlify.app"
+      const redirectUri = window.location.origin
 
       console.log("[AccountSwitcher] Exchanging code for token via Netlify Function...")
+      console.log("[AccountSwitcher] Client ID:", clientId)
+      console.log("[AccountSwitcher] Redirect URI:", redirectUri)
+
+      if (!clientId) {
+        throw new Error("OAuth client ID not configured. Please check VITE_DERIV_OAUTH_CLIENT_ID environment variable.")
+      }
 
       // Exchange code for token using Netlify Function (bypasses CORS)
       const response = await fetch('/.netlify/functions/exchange-token', {
@@ -64,27 +72,45 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
       await connectReal(tokenResponse.access_token)
     } catch (error) {
       console.error("[AccountSwitcher] OAuth callback failed:", error)
+      setError(error instanceof Error ? error.message : "OAuth authentication failed")
     }
   }, [connectReal])
 
   const handleConnectReal = useCallback(async () => {
-    // Start OAuth flow
-    const api = getDerivAPI()
-    const clientId = import.meta.env.VITE_DERIV_OAUTH_CLIENT_ID
-    const redirectUri = "https://promotrade.netlify.app"
+    try {
+      setError(null)
+      
+      // Start OAuth flow
+      const api = getDerivAPI()
+      const clientId = import.meta.env.VITE_DERIV_OAUTH_CLIENT_ID
+      const redirectUri = window.location.origin
 
-    const { url, codeVerifier, state } = api.generateOAuthUrl(clientId, redirectUri, "trade")
-    
-    // Compute code_challenge and add to URL
-    const codeChallenge = await api.deriveCodeChallenge(codeVerifier)
-    const finalUrl = `${url}&code_challenge=${codeChallenge}`
+      console.log("[AccountSwitcher] Starting OAuth flow...")
+      console.log("[AccountSwitcher] Client ID:", clientId)
+      console.log("[AccountSwitcher] Redirect URI:", redirectUri)
 
-    // Store state and verifier for callback verification
-    sessionStorage.setItem("oauth_state", state)
-    sessionStorage.setItem("oauth_code_verifier", codeVerifier)
+      if (!clientId) {
+        throw new Error("OAuth client ID not configured. Please check VITE_DERIV_OAUTH_CLIENT_ID environment variable.")
+      }
 
-    // Redirect to Deriv OAuth
-    window.location.href = finalUrl
+      const { url, codeVerifier, state } = api.generateOAuthUrl(clientId, redirectUri, "trade")
+      
+      // Compute code_challenge and add to URL
+      const codeChallenge = await api.deriveCodeChallenge(codeVerifier)
+      const finalUrl = `${url}&code_challenge=${codeChallenge}`
+
+      console.log("[AccountSwitcher] OAuth URL generated, redirecting...")
+
+      // Store state and verifier for callback verification
+      sessionStorage.setItem("oauth_state", state)
+      sessionStorage.setItem("oauth_code_verifier", codeVerifier)
+
+      // Redirect to Deriv OAuth
+      window.location.href = finalUrl
+    } catch (error) {
+      console.error("[AccountSwitcher] Failed to start OAuth flow:", error)
+      setError(error instanceof Error ? error.message : "Failed to start authentication")
+    }
   }, [])
 
   return (
@@ -146,6 +172,13 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
               </p>
             )}
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="text-xs text-red-500 bg-red-500/10 p-2 rounded">
+              {error}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-2">

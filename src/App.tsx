@@ -33,6 +33,7 @@ function App() {
     setOHLCHistory,
     setConnectionState,
     setIsSymbolLoading,
+    fetchSymbols,
     clearState,
   } = useTradingStore()
 
@@ -174,8 +175,8 @@ function App() {
       // Set connection state AFTER clearState (which resets isConnected to false)
       setConnectionState({ isConnected: true, isConnecting: false, lastConnected: Date.now() })
 
-      const activeSymbols = await api.getActiveSymbols()
-      setSymbols(activeSymbols)
+      // Fetch symbols and wait for it to complete
+      await fetchSymbols()
 
       // Set the loading symbol ref
       loadingSymbolRef.current = currentSymbol
