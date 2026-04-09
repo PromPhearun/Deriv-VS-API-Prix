@@ -254,8 +254,10 @@ const TradingPanel: React.FC = () => {
     }
   }, [currentSymbol, amount, duration, durationUnit, setIsTrading, barrierOffset, precision, contractCategory, isPositiveOffset])
 
+  const { addRecentTrade } = useTradingStore()
+
   // Demo mode: simulate trade with 50/50 win chance
-  const simulateDemoTrade = useCallback((_contractType: ContractType): Promise<void> => {
+  const simulateDemoTrade = useCallback((contractType: ContractType): Promise<void> => {
     return new Promise((resolve) => {
       const tradeAmount = parseFloat(amount)
       const payout = proposal?.payout || tradeAmount * 1.8 // 80% payout for demo
@@ -268,22 +270,33 @@ const TradingPanel: React.FC = () => {
         // 50/50 win chance for demo
         const won = Math.random() > 0.5
         
-        if (won) {
-          // Win: add profit to balance
-          const profit = payout - tradeAmount
-          updateBalance(accountBalance + profit)
-        } else {
-          // Loss: subtract stake from balance
-          updateBalance(accountBalance - tradeAmount)
-        }
+        const profit = won ? payout - tradeAmount : -tradeAmount
+        const newBalance = won ? accountBalance + profit : accountBalance - tradeAmount
+        updateBalance(newBalance)
+        
+        // Add to trade history
+        addRecentTrade({
+          app_id: 1089,
+          buy_price: tradeAmount,
+          contract_id: Date.now(), // Use timestamp as unique ID for demo
+          contract_type: contractType,
+          currency: "USD",
+          date_expiry: 0,
+          date_start: Date.now() / 1000,
+          longcode: `${contractType} ${currentSymbol} - Demo trade`,
+          payout: payout,
+          profit: profit,
+          sell_price: won ? payout : 0,
+          sell_time: Date.now() / 1000,
+          shortcode: `${contractType}_demo`,
+          transaction_id: Date.now(),
+        })
         
         setProposal(null)
         resolve()
       }, maxDuration)
     })
-  }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance])
-
-  const { addRecentTrade } = useTradingStore()
+  }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance, addRecentTrade, currentSymbol])
 
   const executeTrade = useCallback(async (contractType: ContractType) => {
     if (!proposal) {
