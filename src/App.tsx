@@ -4,6 +4,7 @@ import { useTradingStore } from "./stores/tradingStore"
 import { AccountProvider } from "./contexts/AccountContext"
 import TradingChart from "./components/charts/TradingChart"
 import TradingPanel from "./components/trading/TradingPanel"
+import TradeHistory from "./components/trading/TradeHistory"
 import AccountSnapshot from "./components/account/AccountSnapshot"
 import AccountSwitcher from "./components/account/AccountSwitcher"
 import AssetSelector from "./components/trading/AssetSelector"
@@ -507,6 +508,8 @@ function App() {
                 </CardContent>
               </Card>
             </div>
+
+            <TradeHistory />
           </div>
 
           <div className="lg:col-span-1 space-y-4">

@@ -32,3 +32,20 @@ export function sleep(ms: number): Promise<void> {
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15)
 }
+
+export function formatTimestamp(epochSeconds: number): string {
+  const date = new Date(epochSeconds * 1000)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffSecs = Math.floor(diffMs / 1000)
+  const diffMins = Math.floor(diffSecs / 60)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffSecs < 60) return `${diffSecs}s ago`
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}

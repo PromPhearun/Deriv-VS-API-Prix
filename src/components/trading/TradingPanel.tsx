@@ -283,6 +283,8 @@ const TradingPanel: React.FC = () => {
     })
   }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance])
 
+  const { addRecentTrade } = useTradingStore()
+
   const executeTrade = useCallback(async (contractType: ContractType) => {
     if (!proposal) {
       await getProposal(contractType)
@@ -297,7 +299,38 @@ const TradingPanel: React.FC = () => {
       } else {
         // Real mode: use API
         const api = getDerivAPI()
-        await api.buyContract(proposal.id, proposal.ask_price)
+        const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
+        
+        // Track contract result for real accounts
+        if (buyResult?.contract_id) {
+          const unsubscribe = api.subscribeProposalOpenContract(buyResult.contract_id, (contract) => {
+            if (contract.is_sold === 1 || contract.status === "sold") {
+              // Contract settled
+              const profit = contract.profit || 0
+              updateBalance(accountBalance + profit)
+              
+              // Add to trade history
+              addRecentTrade({
+                app_id: 1089,
+                buy_price: contract.buy_price || parseFloat(amount),
+                contract_id: contract.contract_id,
+                contract_type: contract.contract_type || contractType,
+                currency: "USD",
+                date_expiry: contract.date_expiry || 0,
+                date_start: contract.date_start || 0,
+                longcode: contract.longcode || "",
+                payout: contract.payout || 0,
+                profit,
+                sell_price: contract.sell_price || 0,
+                sell_time: contract.sell_spot_time || 0,
+                shortcode: contract.shortcode || "",
+                transaction_id: buyResult.transaction_id || 0,
+              })
+              
+              unsubscribe()
+            }
+          })
+        }
       }
       setProposal(null)
     } catch (err) {
@@ -305,9 +338,27 @@ const TradingPanel: React.FC = () => {
     } finally {
       setIsTrading(false)
     }
-  }, [proposal, setIsTrading, getProposal, accountType, simulateDemoTrade])
+  }, [proposal, setIsTrading, getProposal, accountType, simulateDemoTrade, accountBalance, updateBalance, addRecentTrade, amount, currentSymbol])
 
   // Whether to show barrier controls
+  // Auto-fetch proposal whenever trade parameters change
+  useEffect(() => {
+    if (!currentSymbol || !amount || !duration) return
+    if (isSymbolLoading) return
+    
+    const contractType = contractCategory === "RISE_FALL" ? "CALL" 
+      : contractCategory === "HIGHER_LOWER" ? "CALL" 
+      : "ONETOUCH"
+    
+    const timer = setTimeout(() => {
+      getProposal(contractType).catch(() => {
+        // Error is already handled in getProposal
+      })
+    }, 500) // Debounce to avoid excessive API calls
+    
+    return () => clearTimeout(timer)
+  }, [currentSymbol, amount, duration, durationUnit, contractCategory, barrierOffset, isPositiveOffset, isSymbolLoading])
+
   const showBarrierControls = contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH"
 
   // Computed visual barrier price for display
