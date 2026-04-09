@@ -12,7 +12,6 @@ import type {
   LineData,
   AreaData,
   Time,
-  CreatePriceLineOptions,
 } from "lightweight-charts"
 import { useTradingStore } from "../../stores/tradingStore"
 import { cn } from "../../lib/utils"
@@ -25,12 +24,14 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | ISeriesApi<"Area"> | null>(null)
-  const barrierLineRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]> | null>(null)
+  const barrierHighLineRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]> | null>(null)
+  const barrierLowLineRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]> | null>(null)
   const {
     tickHistory,
     ohlcHistory,
     currentSymbol,
-    barrier,
+    barrierHigh,
+    barrierLow,
     isSymbolLoading,
     chartStyle,
   } = useTradingStore()
@@ -156,19 +157,33 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
       console.warn("[TradingChart] Failed to clear new series:", e)
     }
 
-    // Recreate barrier line if it exists
-    if (barrier !== null && barrierLineRef.current) {
+    // Recreate barrier lines if they exist
+    if (barrierHigh !== null) {
       try {
-        barrierLineRef.current = newSeries.createPriceLine({
-          price: barrier,
+        barrierHighLineRef.current = newSeries.createPriceLine({
+          price: barrierHigh,
           color: "hsl(47.9, 95.8%, 53.1%)",
           lineWidth: 2,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: "Barrier",
+          title: "Higher Barrier",
         })
       } catch (error) {
-        console.warn("Failed to recreate barrier line:", error)
+        console.warn("Failed to recreate higher barrier line:", error)
+      }
+    }
+    if (barrierLow !== null) {
+      try {
+        barrierLowLineRef.current = newSeries.createPriceLine({
+          price: barrierLow,
+          color: "hsl(47.9, 95.8%, 53.1%)",
+          lineWidth: 2,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: "Lower Barrier",
+        })
+      } catch (error) {
+        console.warn("Failed to recreate lower barrier line:", error)
       }
     }
   }, [chartStyle])
@@ -275,40 +290,58 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
     }
   }, [currentSymbol])
 
-  // Barrier price line — uses createPriceLine for a full-width horizontal line
+  // Barrier price lines — uses createPriceLine for full-width horizontal lines
   useEffect(() => {
     if (!seriesRef.current) return
 
-    // Remove existing barrier line if any
-    if (barrierLineRef.current) {
+    // Remove existing barrier lines if any
+    if (barrierHighLineRef.current) {
       try {
-        seriesRef.current.removePriceLine(barrierLineRef.current)
+        seriesRef.current.removePriceLine(barrierHighLineRef.current)
       } catch {
         // Line may already be removed if series was reset
       }
-      barrierLineRef.current = null
+      barrierHighLineRef.current = null
+    }
+    if (barrierLowLineRef.current) {
+      try {
+        seriesRef.current.removePriceLine(barrierLowLineRef.current)
+      } catch {
+        // Line may already be removed if series was reset
+      }
+      barrierLowLineRef.current = null
     }
 
-    // If no barrier or no data, don't draw
+    // If no data, don't draw
     // 'ohlc' and 'candlestick' both use OHLC data, 'area' and 'line' use tick data
     const hasData = chartStyle === 'area' || chartStyle === 'line'
       ? tickHistory.length > 0
       : ohlcHistory.length > 0
 
-    if (barrier === null || !hasData) return
+    if (!hasData) return
 
-    // Create a price line at the barrier level
-    const priceLineOptions: CreatePriceLineOptions = {
-      price: barrier,
-      color: "hsl(47.9, 95.8%, 53.1%)", // Yellow/gold color
-      lineWidth: 2,
-      lineStyle: 2, // Dashed
-      axisLabelVisible: true,
-      title: "Barrier",
+    // Create price lines for Higher and Lower barriers
+    if (barrierHigh !== null) {
+      barrierHighLineRef.current = seriesRef.current.createPriceLine({
+        price: barrierHigh,
+        color: "hsl(47.9, 95.8%, 53.1%)",
+        lineWidth: 2,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "Higher Barrier",
+      })
     }
-
-    barrierLineRef.current = seriesRef.current.createPriceLine(priceLineOptions)
-  }, [barrier, tickHistory, ohlcHistory, chartStyle])
+    if (barrierLow !== null) {
+      barrierLowLineRef.current = seriesRef.current.createPriceLine({
+        price: barrierLow,
+        color: "hsl(47.9, 95.8%, 53.1%)",
+        lineWidth: 2,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "Lower Barrier",
+      })
+    }
+  }, [barrierHigh, barrierLow, tickHistory, ohlcHistory, chartStyle])
 
   return (
     <div className={cn("w-full h-full min-h-[300px] relative", className)}>

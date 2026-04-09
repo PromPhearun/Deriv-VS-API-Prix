@@ -34,6 +34,8 @@ interface TradingState extends ConnectionState {
   
   // Barrier for Higher/Lower and Touch/No Touch
   barrier: number | null
+  barrierHigh: number | null
+  barrierLow: number | null
   barrierOffset: number | null
   minBarrierOffset: number | null
   maxBarrierOffset: number | null
@@ -57,6 +59,8 @@ interface TradingState extends ConnectionState {
   removeActiveContract: (contractId: number) => void
   addRecentTrade: (trade: ProfitTable["transactions"][0]) => void
   setBarrier: (barrier: number | null) => void
+  setBarrierHigh: (barrier: number | null) => void
+  setBarrierLow: (barrier: number | null) => void
   setBarrierOffset: (offset: number | null) => void
   setBarrierOffsetRange: (min: number | null, max: number | null) => void
   setPipSize: (pipSize: number | null) => void
@@ -88,6 +92,8 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   error: null,
   lastConnected: null,
   barrier: null,
+  barrierHigh: null,
+  barrierLow: null,
   barrierOffset: null,
   minBarrierOffset: null,
   maxBarrierOffset: null,
@@ -258,6 +264,8 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   })),
 
   setBarrier: (barrier) => set({ barrier }),
+  setBarrierHigh: (barrierHigh) => set({ barrierHigh }),
+  setBarrierLow: (barrierLow) => set({ barrierLow }),
   setBarrierOffset: (offset) => set({ barrierOffset: offset }),
   setBarrierOffsetRange: (min, max) => set({ minBarrierOffset: min, maxBarrierOffset: max }),
   setPipSize: (pipSize) => set({ pipSize }),

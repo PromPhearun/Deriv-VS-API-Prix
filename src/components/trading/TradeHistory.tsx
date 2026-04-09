@@ -47,13 +47,15 @@ const TradeHistory: React.FC = () => {
                 className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  {isWin ? (
-                    <TrendingUp className="h-4 w-4 text-profit" />
-                  ) : isLoss ? (
-                    <TrendingDown className="h-4 w-4 text-loss" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full bg-muted-foreground/30" />
-                  )}
+                  {(() => {
+                    const isCall = trade.contract_type === "CALL"
+                    const colorClass = isWin ? "text-profit" : isLoss ? "text-loss" : "text-muted-foreground"
+                    if (isCall) {
+                      return <TrendingUp className={cn("h-4 w-4", colorClass)} />
+                    } else {
+                      return <TrendingDown className={cn("h-4 w-4", colorClass)} />
+                    }
+                  })()}
                   <div>
                     <div className="text-sm font-medium">
                       {trade.contract_type}

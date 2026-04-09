@@ -182,7 +182,7 @@ const TradingPanel: React.FC = () => {
     fetchContractsFor()
   }, [currentSymbol, setBarrierOffsetRange, setBarrierOffset, precision, contractCategory])
 
-  // Calculate and set barrier based on contract category and current price
+  // Calculate and set barriers based on contract category and current price
   useEffect(() => {
     if (!currentTick) {
       setBarrier(null)
@@ -193,10 +193,12 @@ const TradingPanel: React.FC = () => {
       // Rise/Fall doesn't use a barrier
       setBarrier(null)
     } else if (contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH") {
-      // Barrier = current spot + signed offset
+      // Show two barriers: Higher and Lower based on current price
       if (barrierOffset !== null) {
-        const signedOffset = isPositiveOffset ? Math.abs(barrierOffset) : -Math.abs(barrierOffset)
-        setBarrier(currentTick.quote + signedOffset)
+        const absOffset = Math.abs(barrierOffset)
+        setBarrier(currentTick.quote + absOffset) // Higher barrier (also kept for compatibility)
+        useTradingStore.getState().setBarrierHigh(currentTick.quote + absOffset)
+        useTradingStore.getState().setBarrierLow(currentTick.quote - absOffset)
       }
     }
   }, [contractCategory, currentTick, setBarrier, barrierOffset, isPositiveOffset])
@@ -211,48 +213,6 @@ const TradingPanel: React.FC = () => {
     setBarrierOffset(rounded)
     setProposal(null)
   }, [minBarrierOffset, maxBarrierOffset, precision, setBarrierOffset])
-
-  const getProposal = useCallback(async (contractType: ContractType) => {
-    if (!currentSymbol || !amount || !duration) return
-    setError(null)
-    setIsTrading(true)
-    try {
-      const api = getDerivAPI()
-      
-      // Format barrier as relative offset string with +/- prefix
-      // The Deriv API expects relative offsets like "+0.50" or "-0.50"
-      let barrierString: string | undefined
-      if (barrierOffset !== null && contractCategory !== "RISE_FALL") {
-        const absOffset = Math.abs(barrierOffset)
-        const formattedOffset = absOffset.toFixed(precision)
-        barrierString = isPositiveOffset ? `+${formattedOffset}` : `-${formattedOffset}`
-      }
-      
-      const params: TradeParams = {
-        symbol: currentSymbol,
-        amount: parseFloat(amount),
-        basis: "stake",
-        contract_type: contractType,
-        duration: parseInt(duration),
-        duration_unit: durationUnit,
-        currency: "USD",
-        ...(barrierString && { barrier: barrierString }),
-      }
-      const result = await api.getProposal(params)
-      setProposal({ id: result.id, ask_price: result.ask_price, payout: result.payout })
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to get proposal"
-      // Handle specific barrier errors
-      if (errorMessage.includes("barrier") || errorMessage.includes("Barrier")) {
-        setError(`Invalid barrier: ${errorMessage}. Please adjust the barrier offset.`)
-      } else {
-        setError(errorMessage)
-      }
-      setProposal(null)
-    } finally {
-      setIsTrading(false)
-    }
-  }, [currentSymbol, amount, duration, durationUnit, setIsTrading, barrierOffset, precision, contractCategory, isPositiveOffset])
 
   const { addRecentTrade, addActiveContract, removeActiveContract } = useTradingStore()
 
@@ -313,20 +273,46 @@ const TradingPanel: React.FC = () => {
   }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance, addRecentTrade, currentSymbol, resolvedPipSize])
 
   const executeTrade = useCallback(async (contractType: ContractType) => {
-    if (!proposal) {
-      await getProposal(contractType)
-      return
-    }
     setError(null)
     setIsTrading(true)
     try {
       if (accountType === "demo") {
-        // Demo mode: simulate trade
+        // Demo mode: simulate trade immediately without API proposal
         await simulateDemoTrade(contractType)
       } else {
-        // Real mode: use API
+        // Real mode: fetch proposal if needed, then buy
+        let currentProposal = proposal
+        if (!currentProposal) {
+          const api = getDerivAPI()
+          const isReady = await api.waitUntilReady(5000)
+          if (!isReady) {
+            throw new Error("API not ready - please wait for connection")
+          }
+          
+          let barrierString: string | undefined
+          if (barrierOffset !== null && contractCategory !== "RISE_FALL") {
+            const absOffset = Math.abs(barrierOffset)
+            const formattedOffset = absOffset.toFixed(precision)
+            barrierString = isPositiveOffset ? `+${formattedOffset}` : `-${formattedOffset}`
+          }
+          
+          const params: TradeParams = {
+            symbol: currentSymbol,
+            amount: parseFloat(amount),
+            basis: "stake",
+            contract_type: contractType,
+            duration: parseInt(duration),
+            duration_unit: durationUnit,
+            currency: "USD",
+            ...(barrierString && { barrier: barrierString }),
+          }
+          const result = await api.getProposal(params)
+          currentProposal = { id: result.id, ask_price: result.ask_price, payout: result.payout }
+          setProposal(currentProposal)
+        }
+        
         const api = getDerivAPI()
-        const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
+        const buyResult = await api.buyContract(currentProposal.id, currentProposal.ask_price)
         
         // Track contract result for real accounts
         if (buyResult?.contract_id) {
@@ -340,7 +326,7 @@ const TradingPanel: React.FC = () => {
             date_start: Date.now() / 1000,
             display_name: currentSymbol,
             buy_price: parseFloat(amount),
-            payout: proposal.payout,
+            payout: currentProposal.payout,
             profit: 0,
             current_spot: currentTick?.quote || 0,
             entry_spot: currentTick?.quote || 0,
@@ -422,28 +408,19 @@ const TradingPanel: React.FC = () => {
     } finally {
       setIsTrading(false)
     }
-  }, [proposal, setIsTrading, getProposal, accountType, simulateDemoTrade, accountBalance, updateBalance, addRecentTrade, amount, currentSymbol])
+  }, [proposal, setIsTrading, accountType, simulateDemoTrade, accountBalance, updateBalance, addRecentTrade, amount, currentSymbol, barrierOffset, contractCategory, precision, isPositiveOffset, duration, durationUnit])
 
   // Whether to show barrier controls
   const showBarrierControls = contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH"
 
-  // Auto-fetch proposal whenever trade parameters change
+  // Set default barrier offset when switching to Higher/Lower or Touch/No Touch
   useEffect(() => {
-    if (!currentSymbol || !amount || !duration) return
-    if (isSymbolLoading) return
-
-    const contractType = contractCategory === "RISE_FALL" ? "CALL"
-      : contractCategory === "HIGHER_LOWER" ? "CALL"
-      : "ONETOUCH"
-
-    const timer = setTimeout(() => {
-      getProposal(contractType).catch(() => {
-        // Error is already handled in getProposal
-      })
-    }, 500) // Debounce to avoid excessive API calls
-
-    return () => clearTimeout(timer)
-  }, [currentSymbol, amount, duration, durationUnit, contractCategory, barrierOffset, isPositiveOffset, isSymbolLoading])
+    if (contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH") {
+      if (barrierOffset === null) {
+        setBarrierOffset(0.5)
+      }
+    }
+  }, [contractCategory, barrierOffset, setBarrierOffset])
 
   // Computed visual barrier price for display
   const visualBarrierPrice = useMemo(() => {
@@ -584,15 +561,25 @@ const TradingPanel: React.FC = () => {
               onChange={(e) => { setDurationUnit(e.target.value as DurationUnit); setProposal(null) }} />
           </div>
         </div>
-        {proposal && (
+        {(proposal || (accountType === "demo" && parseFloat(amount) > 0)) && (
           <div className="p-3 rounded-lg bg-muted/50 space-y-1">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Potential Payout:</span>
-              <span className="font-medium text-profit">{formatCurrency(proposal.payout)}</span>
+              <span className="font-medium text-profit">
+                {proposal 
+                  ? formatCurrency(proposal.payout)
+                  : formatCurrency(parseFloat(amount) * 1.8)
+                }
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Cost:</span>
-              <span className="font-medium">{formatCurrency(proposal.ask_price)}</span>
+              <span className="font-medium">
+                {proposal 
+                  ? formatCurrency(proposal.ask_price)
+                  : formatCurrency(parseFloat(amount))
+                }
+              </span>
             </div>
           </div>
         )}
