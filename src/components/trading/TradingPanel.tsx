@@ -262,9 +262,15 @@ const TradingPanel: React.FC = () => {
       const tradeAmount = parseFloat(amount)
       const payout = proposal?.payout || tradeAmount * 1.8 // 80% payout for demo
       
-      // Simulate trading duration
-      const tradeDuration = durationUnit === 't' ? 1000 : parseInt(duration) * 1000
-      const maxDuration = Math.min(tradeDuration, 5000) // Cap at 5 seconds for demo
+      // Capture entry tick at the start of the trade
+      const entryTick = useTradingStore.getState().currentTick
+      const entryQuote = entryTick?.quote ?? 0
+      
+      // Simulate trading duration - use 1 second per tick for demo
+      const tradeDuration = durationUnit === 't' 
+        ? parseInt(duration) * 1000 // 1 second per tick
+        : parseInt(duration) * 1000
+      const maxDuration = Math.min(tradeDuration, 30000) // Cap at 30 seconds for demo
       
       setTimeout(() => {
         // 50/50 win chance for demo
@@ -274,7 +280,11 @@ const TradingPanel: React.FC = () => {
         const newBalance = won ? accountBalance + profit : accountBalance - tradeAmount
         updateBalance(newBalance)
         
-        // Add to trade history
+        // Capture exit tick at the end of the trade
+        const exitTick = useTradingStore.getState().currentTick
+        const exitQuote = exitTick?.quote ?? entryQuote
+        
+        // Add to trade history with entry/exit ticks
         addRecentTrade({
           app_id: 1089,
           buy_price: tradeAmount,
@@ -290,13 +300,17 @@ const TradingPanel: React.FC = () => {
           sell_time: Date.now() / 1000,
           shortcode: `${contractType}_demo`,
           transaction_id: Date.now(),
+          entry_tick: entryQuote,
+          exit_tick: exitQuote,
+          entry_tick_display_value: entryQuote.toFixed(resolvedPipSize ? Math.max(0, Math.round(-Math.log10(resolvedPipSize))) : 2),
+          exit_tick_display_value: exitQuote.toFixed(resolvedPipSize ? Math.max(0, Math.round(-Math.log10(resolvedPipSize))) : 2),
         })
         
         setProposal(null)
         resolve()
       }, maxDuration)
     })
-  }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance, addRecentTrade, currentSymbol])
+  }, [amount, duration, durationUnit, proposal, accountBalance, updateBalance, addRecentTrade, currentSymbol, resolvedPipSize])
 
   const executeTrade = useCallback(async (contractType: ContractType) => {
     if (!proposal) {
