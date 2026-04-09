@@ -537,7 +537,17 @@ class DerivAPI {
 
   // Public method to check if WebSocket is ready for requests
   isReady(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN && this.isAuthorized
+    return this.isConnectedState && this.isAuthorized
+  }
+
+  // Wait for API to be ready with timeout
+  async waitUntilReady(maxWait: number = 15000): Promise<boolean> {
+    const start = Date.now()
+    while (Date.now() - start < maxWait) {
+      if (this.isReady()) return true
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    return false
   }
 
   private getNextReqId(): number {
@@ -881,15 +891,31 @@ class DerivAPI {
 
     console.log("[DerivAPI] getProposal called with params:", params)
 
+    // Wait for API to be ready before sending proposal request
+    const isReady = await this.waitUntilReady(10000)
+    if (!isReady) {
+      throw new Error("API not ready - connection timeout")
+    }
+
     return new Promise((resolve, reject) => {
-      // Listen for proposal event instead of relying on echo_req matching
+      let resolved = false
+
+      // Listen for proposal event that matches our req_id
       const handler = (data: any) => {
+        // Only process responses for our specific request
+        if (data.echo_req?.req_id !== reqId) return
+        if (resolved) return
+
         console.log("[DerivAPI] Received proposal response:", data)
         if (data.proposal) {
+          resolved = true
           this.off("proposal", handler)
+          clearTimeout(timeout)
           resolve(data.proposal)
         } else if (data.error) {
+          resolved = true
           this.off("proposal", handler)
+          clearTimeout(timeout)
           reject(new Error(data.error.message || "Failed to get proposal"))
         }
       }
@@ -915,16 +941,12 @@ class DerivAPI {
 
       // Timeout after 15 seconds
       const timeout = setTimeout(() => {
-        this.off("proposal", handler)
-        reject(new Error("Request timeout - no proposal response received"))
+        if (!resolved) {
+          resolved = true
+          this.off("proposal", handler)
+          reject(new Error("Request timeout - no proposal response received"))
+        }
       }, 15000)
-
-      // Clean up timeout on resolution
-      const originalResolve = resolve
-      resolve = (value: any) => {
-        clearTimeout(timeout)
-        originalResolve(value)
-      }
     })
   }
 

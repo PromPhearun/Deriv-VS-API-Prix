@@ -411,8 +411,25 @@ const TradingPanel: React.FC = () => {
   }, [proposal, setIsTrading, getProposal, accountType, simulateDemoTrade, accountBalance, updateBalance, addRecentTrade, amount, currentSymbol])
 
   // Whether to show barrier controls
-
   const showBarrierControls = contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH"
+
+  // Auto-fetch proposal whenever trade parameters change
+  useEffect(() => {
+    if (!currentSymbol || !amount || !duration) return
+    if (isSymbolLoading) return
+
+    const contractType = contractCategory === "RISE_FALL" ? "CALL"
+      : contractCategory === "HIGHER_LOWER" ? "CALL"
+      : "ONETOUCH"
+
+    const timer = setTimeout(() => {
+      getProposal(contractType).catch(() => {
+        // Error is already handled in getProposal
+      })
+    }, 500) // Debounce to avoid excessive API calls
+
+    return () => clearTimeout(timer)
+  }, [currentSymbol, amount, duration, durationUnit, contractCategory, barrierOffset, isPositiveOffset, isSymbolLoading])
 
   // Computed visual barrier price for display
   const visualBarrierPrice = useMemo(() => {
