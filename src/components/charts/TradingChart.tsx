@@ -14,6 +14,7 @@ import type {
   Time,
 } from "lightweight-charts"
 import { useTradingStore } from "../../stores/tradingStore"
+import { useTheme } from "../../contexts/ThemeContext"
 import { cn } from "../../lib/utils"
 
 interface TradingChartProps {
@@ -26,6 +27,7 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | ISeriesApi<"Area"> | null>(null)
   const barrierHighLineRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]> | null>(null)
   const barrierLowLineRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]> | null>(null)
+  const { theme } = useTheme()
   const {
     tickHistory,
     ohlcHistory,
@@ -36,27 +38,44 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
     chartStyle,
   } = useTradingStore()
 
+  // Get theme-aware colors
+  const getChartColors = () => {
+    if (theme === 'light') {
+      return {
+        textColor: "hsl(222.2, 84%, 4.9%)",
+        gridColor: "hsl(214.3, 31.8%, 91.4%)",
+        borderColor: "hsl(214.3, 31.8%, 91.4%)",
+      }
+    }
+    return {
+      textColor: "hsl(210, 40%, 98%)",
+      gridColor: "hsl(217.2, 32.6%, 17.5%)",
+      borderColor: "hsl(217.2, 32.6%, 17.5%)",
+    }
+  }
+
   // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return
 
+    const colors = getChartColors()
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { color: "transparent" },
-        textColor: "hsl(210, 40%, 98%)",
+        textColor: colors.textColor,
       },
       grid: {
-        vertLines: { color: "hsl(217.2, 32.6%, 17.5%)" },
-        horzLines: { color: "hsl(217.2, 32.6%, 17.5%)" },
+        vertLines: { color: colors.gridColor },
+        horzLines: { color: colors.gridColor },
       },
       crosshair: {
         mode: 0,
       },
       rightPriceScale: {
-        borderColor: "hsl(217.2, 32.6%, 17.5%)",
+        borderColor: colors.borderColor,
       },
       timeScale: {
-        borderColor: "hsl(217.2, 32.6%, 17.5%)",
+        borderColor: colors.borderColor,
         timeVisible: true,
         secondsVisible: true,
       },
@@ -81,6 +100,29 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
       chart.remove()
     }
   }, [])
+
+  // Update chart colors when theme changes
+  useEffect(() => {
+    if (!chartRef.current) return
+    
+    const colors = getChartColors()
+    chartRef.current.applyOptions({
+      layout: {
+        background: { color: "transparent" },
+        textColor: colors.textColor,
+      },
+      grid: {
+        vertLines: { color: colors.gridColor },
+        horzLines: { color: colors.gridColor },
+      },
+      rightPriceScale: {
+        borderColor: colors.borderColor,
+      },
+      timeScale: {
+        borderColor: colors.borderColor,
+      },
+    })
+  }, [theme])
 
   // Update series based on chart style
   useEffect(() => {

@@ -19,6 +19,7 @@ import { Button } from "../components/ui/button"
 import { formatNumber, formatPercentage } from "../lib/utils"
 import { Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Gamepad2, Home as HomeIcon } from "lucide-react"
 import { Link } from "react-router-dom"
+import { ThemeToggle } from "../components/ui/ThemeToggle"
 
 function Home() {
   const {
@@ -416,7 +417,7 @@ function Home() {
 
   return (
     <AccountProvider>
-      <div className="min-h-screen bg-background text-foreground dark">
+      <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -433,6 +434,7 @@ function Home() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <ThemeToggle />
               <Link to="/mochi-moto">
                 <Button variant="outline" size="sm" className="gap-2" style={{
                   backgroundColor: "#FFE5F0",

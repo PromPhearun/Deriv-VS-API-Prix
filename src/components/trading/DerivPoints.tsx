@@ -36,7 +36,7 @@ const DerivPoints = () => {
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 text-amber-400">
             <Trophy className="h-4 w-4" />
           </div>
-          <span className="bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent font-bold">
+          <span className="text-amber-400 font-bold">
             Deriv Rewards Points
           </span>
         </CardTitle>
@@ -57,7 +57,7 @@ const DerivPoints = () => {
           <Button 
             onClick={handleConvert}
             disabled={!canConvert}
-            className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:from-muted disabled:to-muted disabled:opacity-50 text-white font-semibold shadow-lg shadow-amber-500/20 transition-all duration-200 shrink-0"
+            className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:from-muted disabled:to-muted disabled:opacity-50 disabled:text-foreground text-white font-semibold shadow-lg shadow-amber-500/20 transition-all duration-200 shrink-0"
             size="sm"
             aria-label="Convert points to cash"
           >

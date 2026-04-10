@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Default (Dark) Theme Colors */
   --color-background: hsl(222.2 84% 4.9%);
   --color-foreground: hsl(210 40% 98%);
   --color-card: hsl(222.2 84% 4.9%);
@@ -27,6 +28,33 @@
   --radius: 0.5rem;
 }
 
+/* Light Theme Colors */
+.light {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(217.2 91.2% 59.8%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(217.2 91.2% 59.8%);
+  --color-profit: hsl(142.1 76.2% 36.3%);
+  --color-profit-foreground: hsl(0 0% 100%);
+  --color-loss: hsl(0 84.2% 60.2%);
+  --color-loss-foreground: hsl(0 0% 100%);
+}
+
 * {
   border-color: var(--color-border);
 }
@@ -44,16 +72,35 @@ body {
 }
 
 .dark::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: hsl(217.2, 32.6%, 17.5%);
 }
 
 .dark::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground));
+  background: hsl(215, 20.2%, 65.1%);
   border-radius: 4px;
 }
 
 .dark::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--foreground));
+  background: hsl(210, 40%, 98%);
+}
+
+/* Custom scrollbar for light theme */
+.light::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.light::-webkit-scrollbar-track {
+  background: hsl(210, 40%, 96.1%);
+}
+
+.light::-webkit-scrollbar-thumb {
+  background: hsl(215.4, 16.3%, 46.9%);
+  border-radius: 4px;
+}
+
+.light::-webkit-scrollbar-thumb:hover {
+  background: hsl(222.2, 84%, 4.9%);
 }
 
 /* Trading chart styles */
