@@ -187,6 +187,9 @@ function SurfTheWavesContent() {
       loadingSymbolRef.current = symbolToLoad
       setIsSymbolLoading(true)
       
+      // Clear tick history immediately to prevent ghost data
+      setTickHistory([])
+      
       await cleanupSubscriptions()
       
       if (loadingSymbolRef.current !== symbolToLoad) return
@@ -214,7 +217,7 @@ function SurfTheWavesContent() {
     }
     
     handleSymbolChange()
-  }, [currentSymbol, isConnected, cleanupSubscriptions, setIsSymbolLoading, setTickHistory, subscribeToStream])
+  }, [currentSymbol])
 
   // Calculate volatility and spawn power-ups (with throttling to prevent infinite loops)
   useEffect(() => {
@@ -516,9 +519,7 @@ function SurfTheWavesContent() {
               }}>
                 {accountType === "demo" ? "Demo" : "Real"}: {formatCurrency(balance)}
               </div>
-              <div className="w-48">
-                <AssetSelector />
-              </div>
+              <AssetSelector className="w-48" disabled={!!currentSession} />
               {!currentSession ? (
                 <Button
                   onClick={handleStartSetup}

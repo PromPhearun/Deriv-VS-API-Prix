@@ -6,6 +6,7 @@ import type { ActiveSymbol } from "../../types/deriv"
 
 interface AssetSelectorProps {
   className?: string
+  disabled?: boolean
 }
 
 // Market icons mapping
@@ -22,13 +23,14 @@ interface GroupedSymbols {
   [market: string]: ActiveSymbol[]
 }
 
-const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
+const AssetSelector: React.FC<AssetSelectorProps> = ({ className, disabled }) => {
   const { symbols, currentSymbol, setCurrentSymbol } = useTradingStore()
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedMarkets, setExpandedMarkets] = useState<Set<string>>(new Set())
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const initialExpandDone = useRef(false)
 
   // Get current symbol data
   const currentSymbolData = useMemo(
@@ -97,14 +99,15 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
     }
   }, [searchQuery, filteredGroupedSymbols])
 
-  // Initialize with current symbol's market expanded
+  // Initialize with current symbol's market expanded ONLY once
   useEffect(() => {
-    if (currentSymbolData && expandedMarkets.size === 0) {
+    if (currentSymbolData && !initialExpandDone.current) {
       if (currentSymbolData?.market_display_name) {
         setExpandedMarkets(new Set([currentSymbolData.market_display_name]))
+        initialExpandDone.current = true
       }
     }
-  }, [currentSymbolData, expandedMarkets.size])
+  }, [currentSymbolData])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -144,8 +147,7 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
         // Collapse this market
         next.delete(market)
       } else {
-        // Expand this market and collapse all others (accordion behavior)
-        next.clear()
+        // Expand this market independently
         next.add(market)
       }
       return next
@@ -166,12 +168,14 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
     <div ref={dropdownRef} className={cn("relative", className)}>
       {/* Current Symbol Display */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
           className={cn(
             "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 shadow-sm",
             "bg-white hover:bg-blue-50 border-2",
             "focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2",
-            isOpen ? "border-sky-400" : "border-sky-200"
+            isOpen ? "border-sky-400" : "border-sky-200",
+            disabled && "opacity-50 cursor-not-allowed hover:bg-white"
           )}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
@@ -198,10 +202,10 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
         </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && !disabled && (
         <div
           className={cn(
-            "absolute top-full left-0 right-0 mt-2 z-50",
+            "absolute top-full right-0 mt-2 w-[320px] z-50",
             "bg-card border border-border rounded-lg shadow-lg",
             "max-h-[400px] overflow-hidden flex flex-col"
           )}
