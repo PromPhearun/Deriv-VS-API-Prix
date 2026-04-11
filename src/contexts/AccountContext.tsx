@@ -20,6 +20,7 @@ interface AccountContextType extends AccountInfo {
   updateBalance: (balance: number) => void
   addBalance: (amount: number) => void
   deductBalance: (amount: number) => void
+  resetBalance: () => void
 }
 
 const DEMO_BALANCE = 10000
@@ -236,6 +237,13 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }))
   }, [])
 
+  const resetBalance = useCallback(() => {
+    setAccountInfo((prev) => ({
+      ...prev,
+      balance: DEMO_BALANCE,
+    }))
+  }, [])
+
   const value: AccountContextType = {
     ...accountInfo,
     setAccountType,
@@ -244,6 +252,7 @@ export function AccountProvider({ children }: AccountProviderProps) {
     updateBalance,
     addBalance,
     deductBalance,
+    resetBalance,
   }
 
   return (

@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { useAccount } from "../../contexts/AccountContext"
-import { Wallet, LogOut, User, ShieldCheck, Loader2 } from "lucide-react"
+import { Wallet, LogOut, User, ShieldCheck, Loader2, RotateCcw } from "lucide-react"
 import { formatCurrency } from "../../lib/utils"
 import { cn } from "../../lib/utils"
 import { getDerivAPI } from "../../lib/deriv-api"
@@ -12,7 +12,7 @@ interface AccountSwitcherProps {
 }
 
 const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
-  const { accountType, balance, currency, loginId, isConnecting, setAccountType, connectReal, disconnect } = useAccount()
+  const { accountType, balance, currency, loginId, isConnecting, setAccountType, connectReal, disconnect, resetBalance } = useAccount()
   const [error, setError] = useState<string | null>(null)
 
   const isDemo = accountType === "demo"
@@ -146,9 +146,26 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
                 isDemo ? "text-muted-foreground" : "text-yellow-500"
               )} />
               <div>
-                <p className="text-xs text-muted-foreground">
-                  {isDemo ? "Demo Balance" : "Real Balance"}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    {isDemo ? "Demo Balance" : "Real Balance"}
+                  </p>
+                  {isDemo && (
+                    <div className="relative flex items-center group">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 rounded-full transition-colors hover:bg-muted"
+                        onClick={resetBalance}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
+                      <span className="absolute left-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-popover text-popover-foreground text-[10px] px-2 py-1 rounded shadow-md pointer-events-none z-10 border border-border">
+                        Reset Balance
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-lg font-bold">
                   {formatCurrency(balance, currency || "USD")}
                 </p>

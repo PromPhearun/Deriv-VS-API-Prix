@@ -3,8 +3,19 @@ import { useTradingStore } from "../../stores/tradingStore"
 import { Card } from "../ui/card"
 import { Button } from "../ui/button"
 import { getDerivAPI } from "../../lib/deriv-api"
-import { TrendingUp, TrendingDown, Settings, X, DollarSign } from "lucide-react"
+import { TrendingUp, TrendingDown, Settings, X, DollarSign, Clock } from "lucide-react"
 import StopLossTakeProfitModal from "./StopLossTakeProfitModal"
+
+const formatTimeLeft = (expiry: number) => {
+  const now = Math.floor(Date.now() / 1000)
+  const diff = Math.max(0, expiry - now)
+  if (diff === 0) return "00:00"
+  const h = Math.floor(diff / 3600)
+  const m = Math.floor((diff % 3600) / 60)
+  const s = diff % 60
+  if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+}
 
 export default function ActiveContractsPanel() {
   const activeContracts = useTradingStore((state) => state.activeContracts)
@@ -119,12 +130,21 @@ export default function ActiveContractsPanel() {
                     </p>
                   </div>
 
-                  {/* Status Badge */}
-                  {(isExpired || isSold) && (
-                    <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">
-                      {contract.status.toUpperCase()}
-                    </span>
-                  )}
+                  {/* Status Badge & Timelapse */}
+                  <div className="flex flex-col items-end gap-1">
+                    {(isExpired || isSold) ? (
+                      <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded font-medium">
+                        {contract.status.toUpperCase()}
+                      </span>
+                    ) : (
+                      contract.date_expiry ? (
+                        <div className="flex items-center gap-1.5 text-xs font-mono bg-background/50 border px-2 py-1 rounded shadow-sm text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {formatTimeLeft(contract.date_expiry)}
+                        </div>
+                      ) : null
+                    )}
+                  </div>
                 </div>
 
                 {/* Price Info */}

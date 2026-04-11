@@ -11,17 +11,22 @@ interface DepositWithdrawProps {
 }
 
 const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
-  const { accountType, balance, currency, loginId, addBalance } = useAccount()
+  const { accountType, balance, currency, loginId, addBalance, resetBalance } = useAccount()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   const isReal = accountType === "real"
 
+  const handleResetDemoBalance = () => {
+    resetBalance()
+    setSuccess("Demo balance reset to $10,000")
+    setTimeout(() => setSuccess(null), 3000)
+  }
+
   const handleDeposit = async () => {
     if (!isReal) {
-      addBalance(1000)
-      setSuccess("Added 1000 to demo balance")
+      setError("Deposit/Withdrawal is only available for real accounts. Please switch to a Real account.")
       return
     }
 
@@ -44,7 +49,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
 
   const handleWithdraw = async () => {
     if (!isReal) {
-      setError("Withdrawal is only available for real accounts")
+      setError("Deposit/Withdrawal is only available for real accounts. Please switch to a Real account.")
       return
     }
 
@@ -68,7 +73,19 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Deposit & Withdraw</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-lg">Deposit & Withdraw</CardTitle>
+          {!isReal && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetDemoBalance}
+              className="h-7 text-xs"
+            >
+              Reset Balance
+            </Button>
+          )}
+        </div>
         <div className="text-sm text-muted-foreground">
           Account: {loginId} · Balance: {currency} {balance.toFixed(2)}
         </div>
@@ -91,7 +108,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
             variant="profit"
             size="lg"
             onClick={handleDeposit}
-            disabled={isLoading}
+            disabled={isLoading || !isReal}
             className="flex items-center gap-2"
           >
             {isLoading ? (
@@ -108,7 +125,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
             variant="outline"
             size="lg"
             onClick={handleWithdraw}
-            disabled={isLoading}
+            disabled={isLoading || !isReal}
             className="flex items-center gap-2"
           >
             {isLoading ? (
@@ -122,9 +139,20 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
             </div>
           </Button>
         </div>
+        {!isReal && (
+          <p className="text-xs text-center text-muted-foreground bg-secondary/50 p-2 rounded-md">
+            Deposit and withdraw are only available for real accounts.
+          </p>
+        )}
         <p className="text-[10px] text-muted-foreground text-center">
-          Opens Deriv's secure cashier in a new tab
-          <ExternalLink className="h-2.5 w-2.5 inline ml-1" />
+          <button 
+            onClick={handleDeposit} 
+            className="hover:underline hover:text-foreground transition-colors inline-flex items-center gap-1"
+            disabled={isLoading}
+          >
+            Opens Deriv's secure cashier in a new tab
+            <ExternalLink className="h-2.5 w-2.5" />
+          </button>
         </p>
       </CardContent>
     </Card>

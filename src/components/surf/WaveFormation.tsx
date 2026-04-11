@@ -46,7 +46,15 @@ export default function WaveFormation({ tickHistory, scrollOffset, currentPrice 
       // Wave path from tick data
       const waveY = canvas.height * 0.5 // Middle of screen
       const waveAmplitude = Math.min(canvas.height * 0.2, 150)
-      const pointSpacing = canvas.width / Math.max(tickHistory.length - 1, 1)
+      
+      // Use fixed point spacing to prevent waves from being too squished
+      // When history grows, the wave will just move off screen to the left
+      const MIN_SPACING = 30
+      const pointSpacing = Math.max(canvas.width / Math.max(tickHistory.length - 1, 1), MIN_SPACING)
+      
+      // Calculate starting offset to keep the newest tick on the right side of the screen
+      const totalWidth = pointSpacing * (tickHistory.length - 1)
+      const startX = canvas.width > totalWidth ? 0 : canvas.width - totalWidth
 
       // Draw main wave line
       ctx.beginPath()
@@ -56,7 +64,7 @@ export default function WaveFormation({ tickHistory, scrollOffset, currentPrice 
       ctx.lineJoin = "round"
 
       tickHistory.forEach((tick, index) => {
-        const x = index * pointSpacing - (scrollOffset % pointSpacing)
+        const x = startX + index * pointSpacing - (scrollOffset % pointSpacing)
         const normalizedPrice = (tick.quote - minPrice) / priceRange
         const y = waveY - (normalizedPrice - 0.5) * waveAmplitude * 2
 
@@ -72,7 +80,7 @@ export default function WaveFormation({ tickHistory, scrollOffset, currentPrice 
       // Draw wave fill (water)
       ctx.beginPath()
       tickHistory.forEach((tick, index) => {
-        const x = index * pointSpacing - (scrollOffset % pointSpacing)
+        const x = startX + index * pointSpacing - (scrollOffset % pointSpacing)
         const normalizedPrice = (tick.quote - minPrice) / priceRange
         const y = waveY - (normalizedPrice - 0.5) * waveAmplitude * 2
 
@@ -102,7 +110,7 @@ export default function WaveFormation({ tickHistory, scrollOffset, currentPrice 
       ctx.setLineDash([5, 5])
 
       tickHistory.forEach((tick, index) => {
-        const x = index * pointSpacing - (scrollOffset % pointSpacing)
+        const x = startX + index * pointSpacing - (scrollOffset % pointSpacing)
         const normalizedPrice = (tick.quote - minPrice) / priceRange
         const y = waveY - (normalizedPrice - 0.5) * waveAmplitude * 2
 
@@ -120,7 +128,7 @@ export default function WaveFormation({ tickHistory, scrollOffset, currentPrice 
       for (let i = 1; i < tickHistory.length; i++) {
         const priceDiff = tickHistory[i].quote - tickHistory[i - 1].quote
         if (Math.abs(priceDiff) > priceRange * 0.001) {
-          const x = i * pointSpacing - (scrollOffset % pointSpacing)
+          const x = startX + i * pointSpacing - (scrollOffset % pointSpacing)
           const normalizedPrice = (tickHistory[i].quote - minPrice) / priceRange
           const y = waveY - (normalizedPrice - 0.5) * waveAmplitude * 2
 

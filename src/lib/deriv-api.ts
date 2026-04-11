@@ -1189,8 +1189,11 @@ class DerivAPI {
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(reqId, {
-        resolve: (data: SellResponse) => {
-          if (data.sell) {
+        resolve: (data: any) => {
+          if (data.error) {
+            console.error("[DerivAPI] Sell error:", data.error)
+            reject(new Error(data.error.message || "Failed to sell contract"))
+          } else if (data.sell) {
             resolve(data.sell)
           } else {
             reject(new Error("Failed to sell contract"))
@@ -1201,7 +1204,7 @@ class DerivAPI {
 
       this.send({
         sell: contractId,
-        price,
+        price: 0, // Using 0 ensures it sells at market price, avoiding bid price mismatch errors
         req_id: reqId,
       })
 

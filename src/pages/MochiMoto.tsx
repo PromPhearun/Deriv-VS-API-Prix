@@ -194,6 +194,9 @@ function MochiMotoContent() {
       loadingSymbolRef.current = symbolToLoad
       setIsSymbolLoading(true)
       
+      // Clear tick history immediately to prevent ghost data
+      setTickHistory([])
+      
       await cleanupSubscriptions()
       
       if (loadingSymbolRef.current !== symbolToLoad) return
@@ -285,7 +288,7 @@ function MochiMotoContent() {
               }}>
                 {accountType === "demo" ? "Demo" : "Real"}: {formatCurrency(balance)}
               </div>
-              <AssetSelector className="w-48" />
+              <AssetSelector className="w-48" disabled={!!activeGhostTrade} />
               <Button variant="outline" size="sm" onClick={() => { clearState(); initializeAPI() }} disabled={isConnecting}
                 className="rounded-xl" style={{
                   backgroundColor: "#FFF9F2",

@@ -422,10 +422,10 @@ function Home() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/" className="hover:opacity-80 transition-opacity">
+              <Link to="/" className="hover:opacity-80 transition-opacity flex items-center gap-2">
                 <HomeIcon className="h-5 w-5 text-primary" />
+                <h1 className="text-xl font-bold text-primary">PROMO Trade</h1>
               </Link>
-              <h1 className="text-xl font-bold text-primary">PROMO Trade</h1>
               <div className="flex items-center gap-2 text-sm">
                 {isConnected ? <Wifi className="h-4 w-4 text-profit" /> : <WifiOff className="h-4 w-4 text-loss" />}
                 <span className={isConnected ? "text-profit" : "text-loss"}>
@@ -455,7 +455,7 @@ function Home() {
                   Surf Waves
                 </Button>
               </Link>
-              <AssetSelector className="w-64" />
+              <AssetSelector className="w-48" />
               <Button variant="outline" size="sm" onClick={() => { clearState(); initializeAPI() }} disabled={isConnecting}>
                 <RefreshCw className={`h-4 w-4 ${isConnecting ? "animate-spin" : ""}`} />
               </Button>

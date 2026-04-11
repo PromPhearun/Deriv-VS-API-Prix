@@ -171,10 +171,10 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className, disabled }) =>
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
           className={cn(
-            "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 shadow-sm",
-            "bg-white hover:bg-blue-50 border-2",
-            "focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2",
-            isOpen ? "border-sky-400" : "border-sky-200",
+            "w-full flex items-center justify-between px-3 h-9 rounded-md transition-all duration-200 shadow-sm",
+            "bg-white hover:bg-yellow-50 border-2",
+            "focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2",
+            isOpen ? "border-yellow-600" : "border-[#FFD700]",
             disabled && "opacity-50 cursor-not-allowed hover:bg-white"
           )}
           aria-expanded={isOpen}
@@ -184,14 +184,9 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className, disabled }) =>
             <span className="text-lg flex-shrink-0" role="img" aria-label={currentSymbolData?.market_display_name}>
               {marketIcons[currentSymbolData?.market_display_name || ""] || "📊"}
             </span>
-            <div className="flex flex-col items-start min-w-0">
-              <span className="font-bold text-sm truncate w-full text-sky-950">
-                {currentSymbolData?.display_name || currentSymbol}
-              </span>
-              <span className="text-[10px] text-sky-700/80 truncate w-full">
-                {currentSymbolData?.market_display_name || "Select Asset"}
-              </span>
-            </div>
+            <span className="font-bold text-sm truncate text-sky-950">
+              {currentSymbolData?.display_name || currentSymbol}
+            </span>
           </div>
           <ChevronDown
             className={cn(

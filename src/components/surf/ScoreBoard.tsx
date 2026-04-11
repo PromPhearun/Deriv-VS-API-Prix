@@ -22,11 +22,11 @@ export default function ScoreBoard({ score, combo, duration, bestRide, activeSet
   return (
     <div className="absolute top-4 right-4 z-30 space-y-2">
       {/* Main Score Card */}
-      <Card style={{
+      <Card className="backdrop-blur-md" style={{
         borderRadius: "16px",
-        border: "2px solid #0EA5E9",
-        boxShadow: "0 8px 24px rgba(14, 165, 233, 0.3)",
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        border: "2px solid rgba(14, 165, 233, 0.4)",
+        boxShadow: "0 8px 24px rgba(14, 165, 233, 0.2)",
+        backgroundColor: "rgba(255, 255, 255, 0.4)",
       }}>
         <CardContent className="p-4">
           <div className="space-y-3">
@@ -139,11 +139,11 @@ export default function ScoreBoard({ score, combo, duration, bestRide, activeSet
 
       {/* Combo Multiplier Display */}
       {combo > 0 && (
-        <Card style={{
+        <Card className="backdrop-blur-md" style={{
           borderRadius: "16px",
-          border: "2px solid #8B5CF6",
-          boxShadow: "0 8px 24px rgba(139, 92, 246, 0.3)",
-          backgroundColor: "rgba(139, 92, 246, 0.95)",
+          border: "2px solid rgba(139, 92, 246, 0.4)",
+          boxShadow: "0 8px 24px rgba(139, 92, 246, 0.2)",
+          backgroundColor: "rgba(139, 92, 246, 0.4)",
         }}>
           <CardContent className="p-3">
             <div className="text-center">

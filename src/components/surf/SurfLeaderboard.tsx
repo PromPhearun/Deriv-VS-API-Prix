@@ -51,12 +51,12 @@ export default function SurfLeaderboard({ sessions, totalWaves, surfPoints }: Su
   }
 
   return (
-    <div className="absolute top-20 left-4 z-30 w-80">
+    <div className="absolute top-8 left-4 z-30 w-80">
       <Card className="backdrop-blur-md overflow-hidden transition-all duration-300" style={{
         borderRadius: "16px",
         border: "2px solid rgba(14, 165, 233, 0.4)",
         boxShadow: "0 8px 24px rgba(14, 165, 233, 0.2)",
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        backgroundColor: "rgba(255, 255, 255, 0.4)",
         maxHeight: isExpanded ? "1000px" : "140px",
       }}>
         <CardHeader 

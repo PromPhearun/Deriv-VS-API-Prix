@@ -16,7 +16,7 @@ import AssetSelector from "../components/trading/AssetSelector"
 import ErrorBoundary from "../components/ui/ErrorBoundary"
 import { Button } from "../components/ui/button"
 import { formatCurrency } from "../lib/utils"
-import { Wifi, WifiOff, RefreshCw, ArrowLeft, Waves, Play, Square, Volume2, VolumeX } from "lucide-react"
+import { Wifi, WifiOff, RefreshCw, ArrowLeft, Waves, Play, Square, Volume2, VolumeX, TrendingUp, TrendingDown } from "lucide-react"
 import { calculateVolatility, getCurrentRSI, getCurrentMACD } from "../utils/technicalIndicators"
 import { getTickPrices } from "../utils/technicalIndicators"
 import { getSoundManager } from "../utils/soundManager"
@@ -164,6 +164,9 @@ function SurfTheWavesContent() {
         symbol: symbolToLoad,
       }))
       setTickHistory(ticks)
+      if (ticks.length > 0) {
+        setCurrentTick(ticks[ticks.length - 1])
+      }
       
       await subscribeToStream(symbolToLoad)
       hasInitializedRef.current = true
@@ -221,6 +224,9 @@ function SurfTheWavesContent() {
           symbol: symbolToLoad,
         }))
         setTickHistory(ticks)
+        if (ticks.length > 0) {
+          setCurrentTick(ticks[ticks.length - 1])
+        }
         
         await subscribeToStream(symbolToLoad)
       } catch (err) {
@@ -664,6 +670,27 @@ function SurfTheWavesContent() {
             surfPoints={surfPoints}
           />
         </ErrorBoundary>
+
+        {/* Live Market Price - Bottom Middle */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
+          <div className="bg-[#4A6B82] border-2 border-[#1E293B] px-8 py-3 rounded-[20px] shadow-2xl flex flex-col items-start gap-1 min-w-[240px]">
+            <span className="font-bold text-white text-3xl tabular-nums tracking-wide">
+              {currentTick?.quote ? currentTick.quote.toFixed(5) : (lastTick?.quote ? lastTick.quote.toFixed(5) : "Loading...")}
+            </span>
+            {(currentTick?.quote || lastTick?.quote) && secondLastTick?.quote && (
+              <div className={`flex items-center gap-1 text-base font-bold ${priceChange >= 0 ? "text-[#F87171]" : "text-[#4ADE80]"}`}>
+                {priceChange >= 0 ? (
+                  <TrendingDown className="w-5 h-5" strokeWidth={3} />
+                ) : (
+                  <TrendingUp className="w-5 h-5" strokeWidth={3} />
+                )}
+                <span>
+                  {priceChange > 0 ? "+" : ""}{((priceChange / secondLastTick.quote) * 100).toFixed(2)}%
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )
