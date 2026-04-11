@@ -141,21 +141,31 @@ function SurfTheWavesContent() {
       console.log("[SurfTheWaves] Running clean slate startup...")
       await api.cleanSlateStartup()
       
+      // Preserve current symbol before clearing state
+      const savedSymbol = currentSymbol
       clearState()
       setConnectionState({ isConnected: true, isConnecting: false, lastConnected: Date.now() })
+      
+      // Restore the symbol after clearState (which sets it to R_100)
+      if (savedSymbol && savedSymbol !== "R_100") {
+        useTradingStore.getState().setCurrentSymbol(savedSymbol)
+      }
+      
       await fetchSymbols()
 
-      loadingSymbolRef.current = currentSymbol
+      // Use the restored symbol
+      const symbolToLoad = useTradingStore.getState().currentSymbol
+      loadingSymbolRef.current = symbolToLoad
 
-      const history = await api.getTickHistory(currentSymbol, 50)
+      const history = await api.getTickHistory(symbolToLoad, 50)
       const ticks = history.prices.map((price, i) => ({
         epoch: history.times[i],
         quote: price,
-        symbol: currentSymbol,
+        symbol: symbolToLoad,
       }))
       setTickHistory(ticks)
       
-      await subscribeToStream(currentSymbol)
+      await subscribeToStream(symbolToLoad)
       hasInitializedRef.current = true
     } catch (err) {
       setConnectionState({
@@ -184,6 +194,12 @@ function SurfTheWavesContent() {
     
     const handleSymbolChange = async () => {
       const symbolToLoad = currentSymbol
+      
+      // If we're already loading this symbol, don't restart the process
+      if (loadingSymbolRef.current === symbolToLoad && tickHistory.length > 0 && tickHistory[0].symbol === symbolToLoad) {
+        return
+      }
+      
       loadingSymbolRef.current = symbolToLoad
       setIsSymbolLoading(true)
       
@@ -217,7 +233,8 @@ function SurfTheWavesContent() {
     }
     
     handleSymbolChange()
-  }, [currentSymbol])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSymbol, isConnected])
 
   // Calculate volatility and spawn power-ups (with throttling to prevent infinite loops)
   useEffect(() => {
