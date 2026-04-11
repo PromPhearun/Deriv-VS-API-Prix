@@ -83,7 +83,12 @@ function saveToStorage(state: GhostState) {
   }
 }
 
-export function GhostProvider({ children }: { children: React.ReactNode }) {
+interface GhostProviderProps {
+  children: React.ReactNode
+  onTradeSettle?: (profit: number) => void
+}
+
+export function GhostProvider({ children, onTradeSettle }: GhostProviderProps) {
   const [state, setState] = useState<GhostState>(loadFromStorage)
 
   // Persist to localStorage whenever state changes
@@ -146,6 +151,11 @@ export function GhostProvider({ children }: { children: React.ReactNode }) {
         result: won ? "win" : "loss",
         profit,
         mochiPoints,
+      }
+
+      if (onTradeSettle) {
+        // Need to run this outside the setState callback to avoid potential issues
+        setTimeout(() => onTradeSettle(profit), 0)
       }
 
       const newTrades = [...prev.ghostTrades]

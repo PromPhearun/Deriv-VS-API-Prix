@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle } from "lucide-react"
 import { formatCurrency } from "../../lib/utils"
 

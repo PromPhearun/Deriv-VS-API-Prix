@@ -9,6 +9,7 @@ import CharacterController from "../components/mochi/CharacterController"
 import ParallaxBackground from "../components/mochi/ParallaxBackground"
 import MiniMap from "../components/mochi/MiniMap"
 import AssetSelector from "../components/trading/AssetSelector"
+import GhostTradingPanel from "../components/ghost/GhostTradingPanel"
 import ErrorBoundary from "../components/ui/ErrorBoundary"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -32,7 +33,7 @@ function MochiMotoContent() {
   } = useTradingStore()
 
   const { mascotEmotion, activeGhostTrade, mochiPoints } = useGhost()
-  const { balance: demoBalance } = useAccount()
+  const { balance: demoBalance, addBalance, deductBalance } = useAccount()
 
   const tickUnsubscribeRef = useRef<(() => void) | null>(null)
   const loadingSymbolRef = useRef<string | null>(null)
@@ -373,7 +374,7 @@ function MochiMotoContent() {
         </div>
 
         {/* Mini Map */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-2xl px-4">
+        <div className="absolute bottom-4 left-4 z-30 w-full max-w-sm px-4">
           <MiniMap tickHistory={tickHistory} currentSymbol={currentSymbol} />
         </div>
 
@@ -385,6 +386,11 @@ function MochiMotoContent() {
             </div>
           </div>
         )}
+
+        {/* Ghost Trading Panel */}
+        <div className="absolute bottom-4 right-4 z-40 w-96">
+          <GhostTradingPanel />
+        </div>
       </main>
     </div>
   )
@@ -393,10 +399,25 @@ function MochiMotoContent() {
 function MochiMoto() {
   return (
     <AccountProvider>
-      <GhostProvider>
+      <GhostProviderWithAccount>
         <MochiMotoContent />
-      </GhostProvider>
+      </GhostProviderWithAccount>
     </AccountProvider>
+  )
+}
+
+function GhostProviderWithAccount({ children }: { children: React.ReactNode }) {
+  const { addBalance, deductBalance } = useAccount()
+  return (
+    <GhostProvider onTradeSettle={(profit) => {
+      if (profit > 0) {
+        addBalance(profit)
+      } else if (profit < 0) {
+        deductBalance(Math.abs(profit))
+      }
+    }}>
+      {children}
+    </GhostProvider>
   )
 }
 

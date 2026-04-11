@@ -400,6 +400,16 @@ class DerivAPI {
 
       console.error("[DerivAPI] API Error:", errorMessage)
       this.emit("error", error)
+      
+      // Reject the pending request if it has a req_id so we don't timeout
+      if ("echo_req" in data && data.echo_req) {
+        const reqId = (data.echo_req as any).req_id
+        if (reqId && this.pendingRequests.has(reqId)) {
+          const { reject } = this.pendingRequests.get(reqId)!
+          this.pendingRequests.delete(reqId)
+          reject(new Error(errorMessage))
+        }
+      }
       return
     }
 

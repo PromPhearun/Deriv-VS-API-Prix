@@ -330,10 +330,21 @@ export const useTradingStore = create<TradingState>()(
     try {
       const allSymbols = await api.getActiveSymbols()
 
-      // Use all symbols returned by the API - it already filters appropriately
-      // The API returns only valid, tradeable symbols
-      console.log(`[TradingStore] Loaded ${allSymbols.length} symbols from API`)
-      set({ symbols: allSymbols, isSymbolLoading: false })
+      // Ensure that we include cryptocurrencies properly and default the market name if missing
+      // Filter out some problematic symbols that don't load ticks
+      const validSymbols = allSymbols.filter(sym => 
+        !sym.symbol.startsWith('OTC_')
+      );
+      
+      const enhancedSymbols = validSymbols.map(sym => ({
+        ...sym,
+        market_display_name: sym.market_display_name || (
+          sym.symbol.startsWith('BTC') || sym.symbol.startsWith('ETH') || sym.symbol.includes('CRYPTO') ? 'Cryptocurrencies' : 'Other Assets'
+        ),
+      }))
+
+      console.log(`[TradingStore] Loaded ${enhancedSymbols.length} symbols from API`)
+      set({ symbols: enhancedSymbols, isSymbolLoading: false })
     } catch (error) {
       console.error("Failed to fetch symbols", error)
       set({ isSymbolLoading: false })

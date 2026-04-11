@@ -28,7 +28,7 @@ function catmullRomSpline(
       const s2 = s * s
       const s3 = s2 * s
 
-      const x =
+      let x =
         0.5 *
         (2 * p1.x +
           (-p0.x + p2.x) * s +
@@ -41,6 +41,11 @@ function catmullRomSpline(
           (-p0.y + p2.y) * s +
           (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * s2 +
           (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * s3)
+
+      // Prevent roads from overlapping by ensuring x strictly increases
+      if (result.length > 0 && x <= result[result.length - 1].x) {
+        x = result[result.length - 1].x + 0.1
+      }
 
       result.push({ x, y })
     }
@@ -147,8 +152,31 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
         return
       }
 
-      // Apply scroll offset for parallax effect
-      const offsetX = scrollOffset % width
+      // Calculate continuous repeating points to cover the screen
+      const repeatWidth = width
+      
+      // Calculate how many full repeats we've scrolled
+      // Shift so the scrolling is continuous and seamless
+      const scrollShift = scrollOffset % repeatWidth
+      
+      // Build a continuous array of points that covers from left to right edge
+      const continuousPoints: { x: number, y: number }[] = []
+      
+      // Add points for current screen and one screen ahead to handle wrapping smoothly
+      for (let offset = -repeatWidth; offset <= repeatWidth; offset += repeatWidth) {
+        for (let i = 0; i < smoothPoints.length; i++) {
+          const p = smoothPoints[i]
+          const x = p.x + offset - scrollShift
+          
+          // Only add points that might be visible or form lines that intersect the screen
+          if (x > -200 && x < width + 200) {
+            continuousPoints.push({ x, y: p.y })
+          }
+        }
+      }
+      
+      // Sort points by X coordinate to ensure continuous drawing
+      continuousPoints.sort((a, b) => a.x - b.x)
 
       // Create gradient for ground (3D depth effect)
       const groundGradient = ctx.createLinearGradient(0, height / 2, 0, height)
@@ -158,25 +186,18 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
       groundGradient.addColorStop(1, "#3D7A37") // Deep ground
 
       // Draw ground with gradient
-      ctx.beginPath()
-      ctx.moveTo(0, height)
-
-      // Draw road path with offset
-      for (let i = 0; i < smoothPoints.length; i++) {
-        const point = smoothPoints[i]
-        const x = ((point.x + offsetX) % (width + 200)) - 100
-        const y = point.y
-
-        if (i === 0) {
-          ctx.lineTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
-        }
-      }
-
-      ctx.lineTo(width, height)
-      ctx.closePath()
       ctx.fillStyle = groundGradient
+      ctx.beginPath()
+
+      if (continuousPoints.length > 0) {
+        ctx.moveTo(continuousPoints[0].x, height)
+        for (let i = 0; i < continuousPoints.length; i++) {
+          ctx.lineTo(continuousPoints[i].x, continuousPoints[i].y)
+        }
+        ctx.lineTo(continuousPoints[continuousPoints.length - 1].x, height)
+      }
+      
+      ctx.closePath()
       ctx.fill()
 
       // Draw road surface
@@ -192,15 +213,10 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
       roadGradient.addColorStop(1, "#4A4A4A")
       ctx.strokeStyle = roadGradient
 
-      for (let i = 0; i < smoothPoints.length; i++) {
-        const point = smoothPoints[i]
-        const x = ((point.x + offsetX) % (width + 200)) - 100
-        const y = point.y
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
+      if (continuousPoints.length > 0) {
+        ctx.moveTo(continuousPoints[0].x, continuousPoints[0].y)
+        for (let i = 1; i < continuousPoints.length; i++) {
+          ctx.lineTo(continuousPoints[i].x, continuousPoints[i].y)
         }
       }
       ctx.stroke()
@@ -211,15 +227,10 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
       ctx.setLineDash([20, 20])
       ctx.strokeStyle = "#FFFFFF"
 
-      for (let i = 0; i < smoothPoints.length; i++) {
-        const point = smoothPoints[i]
-        const x = ((point.x + offsetX) % (width + 200)) - 100
-        const y = point.y
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
+      if (continuousPoints.length > 0) {
+        ctx.moveTo(continuousPoints[0].x, continuousPoints[0].y)
+        for (let i = 1; i < continuousPoints.length; i++) {
+          ctx.lineTo(continuousPoints[i].x, continuousPoints[i].y)
         }
       }
       ctx.stroke()
@@ -231,30 +242,20 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
       ctx.strokeStyle = "#FFFFFF"
 
       // Top edge
-      for (let i = 0; i < smoothPoints.length; i++) {
-        const point = smoothPoints[i]
-        const x = ((point.x + offsetX) % (width + 200)) - 100
-        const y = point.y - 20
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
+      if (continuousPoints.length > 0) {
+        ctx.moveTo(continuousPoints[0].x, continuousPoints[0].y - 20)
+        for (let i = 1; i < continuousPoints.length; i++) {
+          ctx.lineTo(continuousPoints[i].x, continuousPoints[i].y - 20)
         }
       }
       ctx.stroke()
 
       // Bottom edge
       ctx.beginPath()
-      for (let i = 0; i < smoothPoints.length; i++) {
-        const point = smoothPoints[i]
-        const x = ((point.x + offsetX) % (width + 200)) - 100
-        const y = point.y + 20
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
+      if (continuousPoints.length > 0) {
+        ctx.moveTo(continuousPoints[0].x, continuousPoints[0].y + 20)
+        for (let i = 1; i < continuousPoints.length; i++) {
+          ctx.lineTo(continuousPoints[i].x, continuousPoints[i].y + 20)
         }
       }
       ctx.stroke()

@@ -23,7 +23,12 @@ const contractCategoryOptions: { value: ContractCategory; label: string }[] = [
 
 type ContractCategory = "RISE_FALL"
 
-const GhostTradingPanel: React.FC = () => {
+export interface GhostTradingPanelProps {
+  onTradeStart?: (amount: number) => void
+}
+
+const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) => {
+  const [isExpanded, setIsExpanded] = useState(true)
   const { currentSymbol, currentTick } = useTradingStore()
   const { balance: demoBalance } = useAccount()
   const { addGhostTrade, settleGhostTrade, activeGhostTrade, mascotEmotion } = useGhost()
@@ -108,24 +113,67 @@ const GhostTradingPanel: React.FC = () => {
       duration: parseInt(duration),
       durationUnit,
     })
-  }, [currentTick, amount, duration, durationUnit, currentSymbol, addGhostTrade, demoBalance])
+
+    // Minimize dashboard when trade starts
+    setIsExpanded(false)
+
+    if (onTradeStart) {
+      onTradeStart(tradeAmount)
+    }
+  }, [currentTick, amount, duration, durationUnit, currentSymbol, addGhostTrade, demoBalance, onTradeStart])
 
   const isDisabled = isTrading || !currentTick || !!activeGhostTrade
 
+  if (!isExpanded) {
+    return (
+      <Button
+        onClick={() => setIsExpanded(true)}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl py-6 shadow-xl"
+        style={{
+          backgroundColor: "#FFFFFF",
+          border: "2px solid #F0E4D7",
+          color: "#8B5E3C",
+          fontFamily: "'Quicksand', 'Nunito', sans-serif",
+          fontWeight: "bold",
+          fontSize: "1.1rem"
+        }}
+      >
+        <Sparkles className="h-5 w-5" style={{ color: "#FF6B9D" }} />
+        Open Ghost Trade
+        {activeGhostTrade && (
+          <span className="ml-2 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: "#FFE5F0" }}>
+            Trade Active
+          </span>
+        )}
+      </Button>
+    )
+  }
+
   return (
-    <Card className="w-full" style={{
+    <Card className="w-full relative transition-all" style={{
       borderRadius: "24px",
       border: "2px solid #F0E4D7",
       boxShadow: "0 10px 30px rgba(166, 123, 91, 0.08)",
-      backgroundColor: "#FFFFFF"
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backdropFilter: "blur(10px)",
+      transformOrigin: "bottom right"
     }}>
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="absolute top-2 right-2 h-8 w-8 rounded-full p-0"
+        onClick={() => setIsExpanded(false)}
+        style={{ color: "#8B5E3C" }}
+      >
+        ✕
+      </Button>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center justify-between" style={{
+        <CardTitle className="text-lg flex items-center justify-between pr-6" style={{
           fontFamily: "'Quicksand', 'Nunito', sans-serif",
           color: "#8B5E3C"
         }}>
           <span className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" style={{ color: "#B5C0D0" }} />
+            <Sparkles className="h-5 w-5" style={{ color: "#FF6B9D" }} />
             Ghost Trade
           </span>
           {currentTick && (
@@ -135,7 +183,7 @@ const GhostTradingPanel: React.FC = () => {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto">
         {/* Active Trade Progress */}
         {activeGhostTrade && (
           <div className="p-4 rounded-2xl space-y-3" style={{

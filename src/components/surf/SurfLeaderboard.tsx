@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Trophy, Medal, Award, Clock, TrendingUp, ChevronDown, ChevronUp } from "lucide-react"
+import { Trophy, Medal, Award, Clock, ChevronDown, ChevronUp } from "lucide-react"
 import type { SurfSession } from "../../contexts/SurfContext"
 
 interface SurfLeaderboardProps {
