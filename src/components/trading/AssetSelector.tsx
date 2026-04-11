@@ -165,35 +165,37 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className }) => {
   return (
     <div ref={dropdownRef} className={cn("relative", className)}>
       {/* Current Symbol Display */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-all duration-200",
-          "bg-card hover:bg-accent/50 border-border",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          isOpen && "ring-2 ring-ring ring-offset-2"
-        )}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-      >
-        <span className="text-xl" role="img" aria-label={currentSymbolData?.market_display_name}>
-          {marketIcons[currentSymbolData?.market_display_name || ""] || "📊"}
-        </span>
-        <div className="flex flex-col items-start">
-          <span className="font-semibold text-sm">
-            {currentSymbolData?.display_name || currentSymbol}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {currentSymbolData?.market_display_name || "Select Asset"}
-          </span>
-        </div>
-        <ChevronDown
+        <button
+          onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "h-4 w-4 ml-2 text-muted-foreground transition-transform duration-200",
-            isOpen && "rotate-180"
+            "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 shadow-sm",
+            "bg-white hover:bg-blue-50 border-2",
+            "focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2",
+            isOpen ? "border-sky-400" : "border-sky-200"
           )}
-        />
-      </button>
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-lg flex-shrink-0" role="img" aria-label={currentSymbolData?.market_display_name}>
+              {marketIcons[currentSymbolData?.market_display_name || ""] || "📊"}
+            </span>
+            <div className="flex flex-col items-start min-w-0">
+              <span className="font-bold text-sm truncate w-full text-sky-950">
+                {currentSymbolData?.display_name || currentSymbol}
+              </span>
+              <span className="text-[10px] text-sky-700/80 truncate w-full">
+                {currentSymbolData?.market_display_name || "Select Asset"}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 ml-1 flex-shrink-0 text-sky-600 transition-transform duration-200",
+              isOpen && "rotate-180"
+            )}
+          />
+        </button>
 
       {/* Dropdown Menu */}
       {isOpen && (

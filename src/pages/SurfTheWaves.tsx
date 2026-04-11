@@ -10,6 +10,9 @@ import SurferCharacter from "../components/surf/SurferCharacter"
 import PowerUpCollector from "../components/surf/PowerUpCollector"
 import ScoreBoard from "../components/surf/ScoreBoard"
 import SurfLeaderboard from "../components/surf/SurfLeaderboard"
+import TradingSetupModal from "../components/surf/TradingSetupModal"
+import type { TradingSetup } from "../components/surf/TradingSetupModal"
+import SessionResultModal from "../components/surf/SessionResultModal"
 import AssetSelector from "../components/trading/AssetSelector"
 import ErrorBoundary from "../components/ui/ErrorBoundary"
 import { Button } from "../components/ui/button"
@@ -54,7 +57,7 @@ function SurfTheWavesContent() {
     performTrick,
   } = useSurf()
 
-  const { balance: demoBalance } = useAccount()
+  const { balance: demoBalance, addBalance, deductBalance } = useAccount()
 
   const tickUnsubscribeRef = useRef<(() => void) | null>(null)
   const loadingSymbolRef = useRef<string | null>(null)
@@ -71,6 +74,8 @@ function SurfTheWavesContent() {
   const [volatility, setVolatility] = useState(0.5)
   const [sessionDuration, setSessionDuration] = useState(0)
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [showSetupModal, setShowSetupModal] = useState(false)
+  const [activeSetup, setActiveSetup] = useState<TradingSetup | null>(null)
 
   // Subscribe to ticks
   const subscribeToStream = useCallback(async (symbol: string) => {
@@ -343,13 +348,22 @@ function SurfTheWavesContent() {
     if (!currentSession) return
 
     const timer = setInterval(() => {
-      setSessionDuration(prev => prev + 1)
+      setSessionDuration(prev => {
+        const newDuration = prev + 1
+        
+        // Check if duration has reached the setup duration
+        if (activeSetup && newDuration >= activeSetup.duration) {
+          handleEndSession()
+        }
+        
+        return newDuration
+      })
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [currentSession])
+  }, [currentSession, activeSetup])
 
-  // Sound effects for ocean ambient and whoosh
+  // Sound effects for ocean ambient, whoosh, and wave crashes
   useEffect(() => {
     if (!currentSession || !soundEnabled) {
       if (oceanAmbientCleanupRef.current) {
@@ -360,7 +374,15 @@ function SurfTheWavesContent() {
     }
 
     const soundMgr = getSoundManager()
-    oceanAmbientCleanupRef.current = soundMgr.playOceanAmbient()
+    
+    // Start ocean ambient with fallback
+    const cleanup = soundMgr.playOceanAmbient()
+    if (cleanup) {
+      oceanAmbientCleanupRef.current = cleanup
+      console.log("[SurfTheWaves] Ocean ambient started")
+    } else {
+      console.warn("[SurfTheWaves] Ocean ambient failed to start - may need user interaction")
+    }
 
     // Add periodic whoosh sounds during riding
     const whooshInterval = setInterval(() => {
@@ -369,8 +391,16 @@ function SurfTheWavesContent() {
       }
     }, 2500) // Every 2.5 seconds
 
+    // Add periodic wave crash sounds
+    const waveCrashInterval = setInterval(() => {
+      if (currentSession?.status === "riding" && Math.random() < 0.5) {
+        soundMgr.playWaveCrash()
+      }
+    }, 4000) // Every 4 seconds
+
     return () => {
       clearInterval(whooshInterval)
+      clearInterval(waveCrashInterval)
       if (oceanAmbientCleanupRef.current) {
         oceanAmbientCleanupRef.current()
         oceanAmbientCleanupRef.current = null
@@ -378,10 +408,22 @@ function SurfTheWavesContent() {
     }
   }, [currentSession, soundEnabled])
 
-  const handleStartSession = () => {
+  const handleStartSetup = () => {
+    if (tickHistory.length > 0) {
+      setShowSetupModal(true)
+      // Resume audio context on user interaction
+      const soundMgr = getSoundManager()
+      soundMgr.playOceanAmbient()
+    }
+  }
+
+  const handleConfirmSetup = (setup: TradingSetup) => {
+    setActiveSetup(setup)
+    deductBalance(setup.stake)
+    
     if (tickHistory.length > 0) {
       const startPrice = tickHistory[tickHistory.length - 1].quote
-      startSession(currentSymbol, startPrice)
+      startSession(currentSymbol, startPrice, setup.stake)
       setSurferState("riding")
       sessionDurationRef.current = 0
       setSessionDuration(0)
@@ -389,22 +431,39 @@ function SurfTheWavesContent() {
       // Play session start sound
       const soundMgr = getSoundManager()
       soundMgr.playSessionStart()
+      soundMgr.playOceanAmbient() // Ensure ambient is playing
     }
   }
 
-  const handleEndSession = () => {
-    if (currentSession && tickHistory.length > 0) {
+  const handleEndSession = useCallback(() => {
+    if (currentSession && tickHistory.length > 0 && activeSetup) {
       const endPrice = tickHistory[tickHistory.length - 1].quote
+      const startPrice = currentSession.startPrice
+      
+      let isWin = false
+      if (activeSetup.prediction === "UP") {
+        isWin = endPrice > startPrice
+      } else {
+        isWin = endPrice < startPrice
+      }
+
+      if (isWin) {
+        addBalance(activeSetup.stake * 1.85)
+      }
+
       endSession(currentSession.id, endPrice, "finished")
-      setSurferState("celebrate")
+      setSurferState(isWin ? "celebrate" : "wipeout")
       
       // Play session end sound
       const soundMgr = getSoundManager()
-      soundMgr.playSessionEnd(true)
+      soundMgr.playSessionEnd(isWin)
       
-      setTimeout(() => setSurferState("idle"), 3000)
+      setTimeout(() => {
+        setSurferState("idle")
+        setActiveSetup(null)
+      }, 3000)
     }
-  }
+  }, [currentSession, tickHistory, activeSetup, addBalance, endSession, setSurferState])
 
   const toggleSound = () => {
     const newSoundEnabled = !soundEnabled
@@ -458,10 +517,12 @@ function SurfTheWavesContent() {
               }}>
                 Demo: {formatCurrency(demoBalance)}
               </div>
-              <AssetSelector className="w-48" />
+              <div className="w-48">
+                <AssetSelector />
+              </div>
               {!currentSession ? (
                 <Button
-                  onClick={handleStartSession}
+                  onClick={handleStartSetup}
                   disabled={!isConnected || tickHistory.length === 0}
                   className="gap-2 rounded-xl"
                   style={{
@@ -562,9 +623,21 @@ function SurfTheWavesContent() {
               combo={currentCombo}
               duration={sessionDuration}
               bestRide={bestRide}
+              activeSetup={activeSetup}
+              currentPrice={currentTick?.quote || 0}
+              startPrice={currentSession.startPrice}
             />
           </ErrorBoundary>
         )}
+
+        <TradingSetupModal
+          isOpen={showSetupModal}
+          onClose={() => setShowSetupModal(false)}
+          onConfirm={handleConfirmSetup}
+          currentBalance={demoBalance}
+          currentPrice={currentTick?.quote || 0}
+          symbol={currentSymbol}
+        />
 
         {/* Leaderboard - Layer 30 */}
         <ErrorBoundary>

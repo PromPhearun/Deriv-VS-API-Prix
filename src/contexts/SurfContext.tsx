@@ -14,6 +14,11 @@ export interface SurfSession {
   tricksPerformed: number
   status: "riding" | "wiped" | "finished"
   contractId?: string
+  // Trading info
+  stake?: number
+  prediction?: "UP" | "DOWN"
+  targetDuration?: number
+  profitLoss?: number
 }
 
 export interface PowerUp {
@@ -40,7 +45,7 @@ interface SurfState {
 }
 
 interface SurfContextType extends SurfState {
-  startSession: (symbol: string, startPrice: number) => string
+  startSession: (symbol: string, startPrice: number, stake?: number) => string
   endSession: (sessionId: string, endPrice: number, status: "wiped" | "finished") => void
   updateScore: (points: number) => void
   addCombo: () => void
@@ -114,7 +119,7 @@ export function SurfProvider({ children }: { children: React.ReactNode }) {
     saveToStorage(state)
   }, [state])
 
-  const startSession = useCallback((symbol: string, startPrice: number): string => {
+  const startSession = useCallback((symbol: string, startPrice: number, stake: number = 0): string => {
     const id = `surf-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
     const newSession: SurfSession = {
       id,
@@ -128,6 +133,7 @@ export function SurfProvider({ children }: { children: React.ReactNode }) {
       powerUpsCollected: 0,
       tricksPerformed: 0,
       status: "riding",
+      stake,
     }
 
     setState(prev => ({
@@ -158,6 +164,7 @@ export function SurfProvider({ children }: { children: React.ReactNode }) {
 
       const newBestRide = Math.max(prev.bestRide, prev.currentScore)
       const newTotalWaves = prev.totalWaves + 1
+      const pointsEarned = prev.currentSession.stake || 0
 
       return {
         ...prev,
@@ -166,7 +173,7 @@ export function SurfProvider({ children }: { children: React.ReactNode }) {
         surferState: status === "wiped" ? "wipeout" : "celebrate",
         bestRide: newBestRide,
         totalWaves: newTotalWaves,
-        surfPoints: prev.surfPoints + prev.currentScore,
+        surfPoints: prev.surfPoints + pointsEarned,
       }
     })
   }, [])

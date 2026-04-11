@@ -1,14 +1,18 @@
 import { Card, CardContent } from "../ui/card"
 import { Trophy, Zap, Timer, Target } from "lucide-react"
+import type { TradingSetup } from "./TradingSetupModal"
 
 interface ScoreBoardProps {
   score: number
   combo: number
   duration: number
   bestRide: number
+  activeSetup?: TradingSetup | null
+  currentPrice?: number
+  startPrice?: number
 }
 
-export default function ScoreBoard({ score, combo, duration, bestRide }: ScoreBoardProps) {
+export default function ScoreBoard({ score, combo, duration, bestRide, activeSetup, currentPrice, startPrice }: ScoreBoardProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -93,6 +97,42 @@ export default function ScoreBoard({ score, combo, duration, bestRide }: ScoreBo
                 {bestRide.toLocaleString()}
               </span>
             </div>
+
+            {/* Trading PnL Display */}
+            {activeSetup && startPrice !== undefined && currentPrice !== undefined && (
+              <>
+                <div className="h-px" style={{ backgroundColor: "#E0F2FE" }} />
+                <div className={`p-3 rounded-xl border-2 ${
+                  (activeSetup.prediction === "UP" && currentPrice > startPrice) ||
+                  (activeSetup.prediction === "DOWN" && currentPrice < startPrice)
+                    ? "bg-emerald-50 border-emerald-500"
+                    : "bg-rose-50 border-rose-500"
+                }`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-slate-500">TRADE PNL</span>
+                    <span className="text-xs font-medium text-slate-600">
+                      Stake: ${activeSetup.stake} | {activeSetup.prediction}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm font-bold text-slate-700">
+                      {currentPrice > startPrice ? "▲" : "▼"} {Math.abs((currentPrice - startPrice) / startPrice * 100).toFixed(3)}%
+                    </span>
+                    <span className={`text-xl font-bold ${
+                      (activeSetup.prediction === "UP" && currentPrice > startPrice) ||
+                      (activeSetup.prediction === "DOWN" && currentPrice < startPrice)
+                        ? "text-emerald-600"
+                        : "text-rose-600"
+                    }`}>
+                      {((activeSetup.prediction === "UP" && currentPrice > startPrice) ||
+                        (activeSetup.prediction === "DOWN" && currentPrice < startPrice))
+                        ? `+$${(activeSetup.stake * 0.85).toFixed(2)}`
+                        : `-$${activeSetup.stake.toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

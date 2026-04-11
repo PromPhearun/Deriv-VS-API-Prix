@@ -92,17 +92,63 @@ class SoundManager {
       lfoGain.connect(oscillator.frequency)
       lfo.start()
 
+      console.log("[SoundManager] Ocean ambient started successfully")
+
       // Return cleanup function
       return () => {
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
-        setTimeout(() => {
-          oscillator.stop()
-          lfo.stop()
-        }, 500)
+        try {
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+          setTimeout(() => {
+            oscillator.stop()
+            lfo.stop()
+            console.log("[SoundManager] Ocean ambient stopped")
+          }, 500)
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     } catch (err) {
       console.warn("[SoundManager] Failed to play ocean ambient:", err)
       return null
+    }
+  }
+
+  /**
+   * Play wave crash sound
+   */
+  playWaveCrash() {
+    if (!this.ensureContext() || !this.isEnabled) return
+
+    try {
+      const ctx = this.audioContext!
+      const noise = ctx.createBufferSource()
+      const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      
+      // Generate white noise for wave crash
+      for (let i = 0; i < buffer.length; i++) {
+        data[i] = Math.random() * 2 - 1
+      }
+      
+      noise.buffer = buffer
+      
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = 2000
+      filter.Q.value = 1
+      
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(0.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+      
+      noise.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.masterGain!)
+      
+      noise.start()
+      noise.stop(ctx.currentTime + 0.5)
+    } catch (err) {
+      console.warn("[SoundManager] Failed to play wave crash:", err)
     }
   }
 

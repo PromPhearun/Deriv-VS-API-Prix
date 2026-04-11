@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Trophy, Medal, Award, Clock, TrendingUp } from "lucide-react"
+import { Trophy, Medal, Award, Clock, TrendingUp, ChevronDown, ChevronUp } from "lucide-react"
 import type { SurfSession } from "../../contexts/SurfContext"
 
 interface SurfLeaderboardProps {
@@ -9,6 +10,7 @@ interface SurfLeaderboardProps {
 }
 
 export default function SurfLeaderboard({ sessions, totalWaves, surfPoints }: SurfLeaderboardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const topSessions = [...sessions]
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
@@ -50,38 +52,56 @@ export default function SurfLeaderboard({ sessions, totalWaves, surfPoints }: Su
 
   return (
     <div className="absolute top-20 left-4 z-30 w-80">
-      <Card className="backdrop-blur-md" style={{
+      <Card className="backdrop-blur-md overflow-hidden transition-all duration-300" style={{
         borderRadius: "16px",
         border: "2px solid rgba(14, 165, 233, 0.4)",
         boxShadow: "0 8px 24px rgba(14, 165, 233, 0.2)",
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        maxHeight: isExpanded ? "1000px" : "140px",
       }}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2" style={{ color: "#0C4A6E" }}>
-            <Trophy className="w-5 h-5" style={{ color: "#FBBF24" }} />
-            Leaderboard
-          </CardTitle>
-          <div className="flex gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" style={{ color: "#0EA5E9" }} />
-              <span style={{ color: "#6B7280" }}>Total Waves:</span>
-              <span className="font-bold" style={{ color: "#0EA5E9" }}>{totalWaves}</span>
+        <CardHeader 
+          className="pb-3 cursor-pointer select-none" 
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2" style={{ color: "#0C4A6E" }}>
+              <Trophy className="w-5 h-5" style={{ color: "#FBBF24" }} />
+              Leaderboards
+            </CardTitle>
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5" style={{ color: "#0C4A6E" }} />
+            ) : (
+              <ChevronDown className="w-5 h-5" style={{ color: "#0C4A6E" }} />
+            )}
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-1">
+                <Trophy className="w-4 h-4" style={{ color: "#FBBF24" }} />
+                <span className="font-medium" style={{ color: "#6B7280" }}>Points:</span>
+              </div>
+              <span className="font-bold text-lg" style={{ color: "#FBBF24" }}>{surfPoints.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Trophy className="w-4 h-4" style={{ color: "#FBBF24" }} />
-              <span style={{ color: "#6B7280" }}>Points:</span>
-              <span className="font-bold" style={{ color: "#FBBF24" }}>{surfPoints.toLocaleString()}</span>
+            
+            <div className="flex items-center justify-between text-xs mt-1">
+              <span style={{ color: "#6B7280" }}>Total Waves Surfed:</span>
+              <span className="font-bold" style={{ color: "#0EA5E9" }}>{totalWaves}</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          {topSessions.length === 0 ? (
-            <div className="text-center py-8" style={{ color: "#6B7280" }}>
-              <div className="text-4xl mb-2">🏄</div>
-              <p className="text-sm">No rides yet!</p>
-              <p className="text-xs mt-1">Start surfing to set records</p>
+        
+        <div className={`transition-opacity duration-300 ${isExpanded ? "opacity-100" : "opacity-0"}`}>
+          <CardContent className="pt-0">
+            <div className="text-sm font-bold mb-3 pb-2 border-b" style={{ color: "#0C4A6E", borderColor: "#E0F2FE" }}>
+              Top Surf Sessions
             </div>
-          ) : (
+            {topSessions.length === 0 ? (
+              <div className="text-center py-8" style={{ color: "#6B7280" }}>
+                <div className="text-4xl mb-2">🏄</div>
+                <p className="text-sm">No rides yet!</p>
+                <p className="text-xs mt-1">Start surfing to set records</p>
+              </div>
+            ) : (
             <div className="space-y-2">
               {topSessions.map((session, index) => (
                 <div
@@ -132,7 +152,8 @@ export default function SurfLeaderboard({ sessions, totalWaves, surfPoints }: Su
               ))}
             </div>
           )}
-        </CardContent>
+          </CardContent>
+        </div>
       </Card>
     </div>
   )

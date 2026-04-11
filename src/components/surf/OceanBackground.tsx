@@ -72,6 +72,33 @@ export default function OceanBackground({ volatility, scrollOffset }: OceanBackg
         ctx.fill()
       }
 
+      // Clouds
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)"
+      for (let i = 0; i < 5; i++) {
+        const cloudX = ((scrollOffset * 0.5 + i * 300) % (canvas.width + 200)) - 100
+        const cloudY = canvas.height * 0.1 + (i % 3) * 50
+        
+        ctx.beginPath()
+        ctx.arc(cloudX, cloudY, 30, 0, Math.PI * 2)
+        ctx.arc(cloudX + 25, cloudY - 15, 35, 0, Math.PI * 2)
+        ctx.arc(cloudX + 50, cloudY, 25, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // Birds
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.6)"
+      ctx.lineWidth = 2
+      for (let i = 0; i < 3; i++) {
+        const birdX = ((scrollOffset * 1.5 + i * 400) % (canvas.width + 100)) - 50
+        const birdY = canvas.height * 0.2 + Math.sin(scrollOffset * 0.05 + i) * 20
+        
+        ctx.beginPath()
+        ctx.moveTo(birdX, birdY)
+        ctx.quadraticCurveTo(birdX + 10, birdY - 10, birdX + 20, birdY)
+        ctx.quadraticCurveTo(birdX + 30, birdY - 10, birdX + 40, birdY)
+        ctx.stroke()
+      }
+
       // Foam particles
       const particleCount = Math.floor(10 + volatility * 20)
       ctx.fillStyle = "rgba(255, 255, 255, 0.6)"

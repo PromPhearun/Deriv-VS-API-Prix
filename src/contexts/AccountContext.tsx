@@ -18,6 +18,8 @@ interface AccountContextType extends AccountInfo {
   connectReal: (accessToken: string) => Promise<void>
   disconnect: () => void
   updateBalance: (balance: number) => void
+  addBalance: (amount: number) => void
+  deductBalance: (amount: number) => void
 }
 
 const DEMO_BALANCE = 10000
@@ -220,12 +222,28 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }))
   }, [])
 
+  const addBalance = useCallback((amount: number) => {
+    setAccountInfo((prev) => ({
+      ...prev,
+      balance: prev.balance + amount,
+    }))
+  }, [])
+
+  const deductBalance = useCallback((amount: number) => {
+    setAccountInfo((prev) => ({
+      ...prev,
+      balance: Math.max(0, prev.balance - amount),
+    }))
+  }, [])
+
   const value: AccountContextType = {
     ...accountInfo,
     setAccountType,
     connectReal,
     disconnect,
     updateBalance,
+    addBalance,
+    deductBalance,
   }
 
   return (
