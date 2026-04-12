@@ -34,7 +34,7 @@ function MochiMotoContent() {
   } = useTradingStore()
 
   const { mascotEmotion, activeGhostTrade, mochiPoints } = useGhost()
-  const { balance, addBalance, deductBalance, accountType } = useAccount()
+  const { balance, deductBalance, accountType } = useAccount()
 
   const tickUnsubscribeRef = useRef<(() => void) | null>(null)
   const loadingSymbolRef = useRef<string | null>(null)

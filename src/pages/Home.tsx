@@ -28,7 +28,6 @@ function Home() {
     currentTick,
     tickHistory,
     ohlcHistory,
-    totalTicksReceived,
     isConnected,
     isConnecting,
     error,

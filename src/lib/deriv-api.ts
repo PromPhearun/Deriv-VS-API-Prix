@@ -1184,7 +1184,7 @@ class DerivAPI {
    * @param contractId - The contract ID to sell
    * @param price - Minimum acceptable price (0 for market price)
    */
-  async sellContract(contractId: number, price: number = 0): Promise<SellResponse["sell"]> {
+  async sellContract(contractId: number, _price: number = 0): Promise<SellResponse["sell"]> {
     const reqId = this.getNextReqId()
 
     return new Promise((resolve, reject) => {
