@@ -82,58 +82,6 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }
   }, [])
 
-  // Set up event handlers for real account
-  useEffect(() => {
-    if (accountInfo.accountType === "real") {
-      const api = getDerivAPI()
-
-      // Set up balance subscription handler
-      balanceHandlerRef.current = api.on("balance", handleBalanceUpdate)
-
-      // Set up authorize response handler
-      authorizeHandlerRef.current = api.on("authorize", handleAuthorize)
-
-      // Skip balance fetch on public endpoint - it requires authentication
-      // Balance will be fetched when user connects via OAuth
-      console.log("[AccountContext] Real account selected - waiting for OAuth authentication")
-
-      return () => {
-        // Clean up handlers
-        if (balanceHandlerRef.current) {
-          api.off("balance", balanceHandlerRef.current)
-          balanceHandlerRef.current = null
-        }
-        if (authorizeHandlerRef.current) {
-          api.off("authorize", authorizeHandlerRef.current)
-          authorizeHandlerRef.current = null
-        }
-      }
-    }
-  }, [accountInfo.accountType, handleBalanceUpdate, handleAuthorize])
-
-  const setAccountType = useCallback((type: AccountType) => {
-    if (type === "demo") {
-      // Reset to demo account
-      localStorage.setItem("account_type", "demo")
-      setAccountInfo({
-        accountType: "demo",
-        balance: DEMO_BALANCE,
-        currency: DEMO_CURRENCY,
-        loginId: DEMO_LOGIN_ID,
-        isConnected: false,
-        isConnecting: false,
-        accessToken: null,
-      })
-    } else {
-      // Switch to real - will trigger OAuth flow
-      setAccountInfo((prev) => ({
-        ...prev,
-        isConnecting: true,
-      }))
-    }
-    localStorage.setItem("account_type", type)
-  }, [])
-
   const connectReal = useCallback(async (accessToken: string) => {
     console.log("[AccountContext] Connecting real account with OAuth...")
     
@@ -214,6 +162,68 @@ export function AccountProvider({ children }: AccountProviderProps) {
       isConnecting: false,
       accessToken: null,
     })
+  }, [])
+
+  // Set up event handlers for real account
+  useEffect(() => {
+    if (accountInfo.accountType === "real") {
+      const api = getDerivAPI()
+
+      // Set up balance subscription handler
+      balanceHandlerRef.current = api.on("balance", handleBalanceUpdate)
+
+      // Set up authorize response handler
+      authorizeHandlerRef.current = api.on("authorize", handleAuthorize)
+
+      // Auto-reconnect if we have a token but aren't connected
+      const storedToken = localStorage.getItem("deriv_access_token")
+      if (storedToken && !accountInfo.isConnected && !accountInfo.isConnecting) {
+        console.log("[AccountContext] Found stored token, auto-reconnecting...")
+        connectReal(storedToken).catch(err => {
+          console.error("[AccountContext] Auto-reconnect failed, falling back to demo:", err)
+          disconnect()
+        })
+      } else {
+        // Skip balance fetch on public endpoint - it requires authentication
+        // Balance will be fetched when user connects via OAuth
+        console.log("[AccountContext] Real account selected - waiting for OAuth authentication")
+      }
+
+      return () => {
+        // Clean up handlers
+        if (balanceHandlerRef.current) {
+          api.off("balance", balanceHandlerRef.current)
+          balanceHandlerRef.current = null
+        }
+        if (authorizeHandlerRef.current) {
+          api.off("authorize", authorizeHandlerRef.current)
+          authorizeHandlerRef.current = null
+        }
+      }
+    }
+  }, [accountInfo.accountType, accountInfo.isConnected, accountInfo.isConnecting, connectReal, disconnect, handleBalanceUpdate, handleAuthorize])
+
+  const setAccountType = useCallback((type: AccountType) => {
+    if (type === "demo") {
+      // Reset to demo account
+      localStorage.setItem("account_type", "demo")
+      setAccountInfo({
+        accountType: "demo",
+        balance: DEMO_BALANCE,
+        currency: DEMO_CURRENCY,
+        loginId: DEMO_LOGIN_ID,
+        isConnected: false,
+        isConnecting: false,
+        accessToken: null,
+      })
+    } else {
+      // Switch to real - will trigger OAuth flow
+      setAccountInfo((prev) => ({
+        ...prev,
+        isConnecting: true,
+      }))
+    }
+    localStorage.setItem("account_type", type)
   }, [])
 
   const updateBalance = useCallback((newBalance: number) => {
