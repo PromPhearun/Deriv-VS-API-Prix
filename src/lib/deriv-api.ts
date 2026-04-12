@@ -111,6 +111,36 @@ class DerivAPI {
     if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) {
       return
     }
+
+    // Check if we have a real account that should be auto-connecting via AccountContext
+    const accountType = localStorage.getItem("account_type")
+    const hasToken = !!localStorage.getItem("deriv_access_token")
+
+    if (accountType === "real" && hasToken) {
+      console.log("[DerivAPI] Waiting for AccountContext to establish OTP connection...")
+      // Wait up to 5 seconds for AccountContext to connect the OTP WebSocket
+      return new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn("[DerivAPI] Timed out waiting for OTP connection, falling back to public endpoint")
+          this.connect().then(resolve).catch(() => resolve())
+        }, 5000)
+
+        const checkAuth = setInterval(() => {
+          if (this.isConnectedState && this.isAuthorized && this.currentWsUrl !== WS_PUBLIC_URL) {
+            clearInterval(checkAuth)
+            clearTimeout(timeout)
+            console.log("[DerivAPI] OTP connection confirmed!")
+            resolve()
+          } else if (this.isConnectedState && this.currentWsUrl === WS_PUBLIC_URL) {
+             // Fallback public connection already established
+             clearInterval(checkAuth)
+             clearTimeout(timeout)
+             resolve()
+          }
+        }, 100)
+      })
+    }
+
     return this.connect()
   }
 
