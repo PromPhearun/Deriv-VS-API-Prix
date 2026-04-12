@@ -108,7 +108,7 @@ export default function ActiveContractsPanel() {
             return (
               <div
                 key={contract.contract_id}
-                className="border rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-gray-800/50"
+                className="border rounded-lg p-4 space-y-3 bg-muted/30 border-amber-500/10"
               >
                 {/* Contract Header */}
                 <div className="flex items-start justify-between">
@@ -125,7 +125,7 @@ export default function ActiveContractsPanel() {
                         {contract.contract_type}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {contract.shortcode}
                     </p>
                   </div>
@@ -133,7 +133,7 @@ export default function ActiveContractsPanel() {
                   {/* Status Badge & Timelapse */}
                   <div className="flex flex-col items-end gap-1">
                     {(isExpired || isSold) ? (
-                      <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded font-medium">
+                      <span className="px-2 py-1 text-xs bg-muted rounded font-medium text-muted-foreground">
                         {contract.status.toUpperCase()}
                       </span>
                     ) : (
@@ -150,46 +150,46 @@ export default function ActiveContractsPanel() {
                 {/* Price Info */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-600 dark:text-gray-400">Entry Price</p>
-                    <p className="font-semibold">{contract.entry_spot_display_value}</p>
+                    <p className="text-muted-foreground text-xs">Entry Price</p>
+                    <p className="font-semibold tabular-nums">{contract.entry_spot_display_value}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 dark:text-gray-400">Current Price</p>
-                    <p className="font-semibold">{contract.current_spot_display_value}</p>
+                    <p className="text-muted-foreground text-xs">Current Price</p>
+                    <p className="font-semibold tabular-nums">{contract.current_spot_display_value}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 dark:text-gray-400">Buy Price</p>
-                    <p className="font-semibold">${contract.buy_price.toFixed(2)}</p>
+                    <p className="text-muted-foreground text-xs">Buy Price</p>
+                    <p className="font-semibold tabular-nums">${contract.buy_price.toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 dark:text-gray-400">Payout</p>
-                    <p className="font-semibold">${contract.payout.toFixed(2)}</p>
+                    <p className="text-muted-foreground text-xs">Payout</p>
+                    <p className="font-semibold tabular-nums">${contract.payout.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* P&L Display */}
                 <div
-                  className={`flex items-center justify-between p-3 rounded ${
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
                     isProfitable
-                      ? "bg-green-100 dark:bg-green-900/30"
-                      : "bg-red-100 dark:bg-red-900/30"
+                      ? "bg-profit/10 border-profit/20"
+                      : "bg-loss/10 border-loss/20"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     {isProfitable ? (
-                      <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <TrendingUp className="w-5 h-5 text-profit" />
                     ) : (
-                      <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      <TrendingDown className="w-5 h-5 text-loss" />
                     )}
-                    <span className="font-semibold">
+                    <span className={`font-semibold tabular-nums ${isProfitable ? 'text-profit' : 'text-loss'}`}>
                       {isProfitable ? "+" : ""}${contract.profit.toFixed(2)}
                     </span>
                   </div>
                   <span
-                    className={`text-sm font-medium ${
+                    className={`text-sm font-medium tabular-nums ${
                       isProfitable
-                        ? "text-green-700 dark:text-green-300"
-                        : "text-red-700 dark:text-red-300"
+                        ? "text-profit"
+                        : "text-loss"
                     }`}
                   >
                     {isProfitable ? "+" : ""}{profitPercentage}% ROI
@@ -199,16 +199,16 @@ export default function ActiveContractsPanel() {
                 {/* SL/TP Visual Indicator */}
                 {(sltp?.stopLoss || sltp?.takeProfit) && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>SL: ${sltp.stopLoss?.toFixed(2) || "N/A"}</span>
                       <span>Current: ${contract.bid_price.toFixed(2)}</span>
                       <span>TP: ${sltp.takeProfit?.toFixed(2) || "N/A"}</span>
                     </div>
                     {/* Progress Bar */}
-                    <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden border border-amber-500/20">
                       <div
                         className={`absolute h-full ${
-                          isProfitable ? "bg-green-500" : "bg-red-500"
+                          isProfitable ? "bg-profit" : "bg-loss"
                         }`}
                         style={{
                           width: sltp.stopLoss && sltp.takeProfit
