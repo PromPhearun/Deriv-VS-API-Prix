@@ -118,23 +118,28 @@ class DerivAPI {
 
     if (accountType === "real" && hasToken) {
       console.log("[DerivAPI] Waiting for AccountContext to establish OTP connection...")
-      // Wait up to 5 seconds for AccountContext to connect the OTP WebSocket
+      this.isConnecting = true // Set to true to prevent concurrent initializations
+
+      // Wait up to 15 seconds for AccountContext to connect the OTP WebSocket
       return new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           console.warn("[DerivAPI] Timed out waiting for OTP connection, falling back to public endpoint")
+          this.isConnecting = false
           this.connect().then(resolve).catch(() => resolve())
-        }, 5000)
+        }, 15000)
 
         const checkAuth = setInterval(() => {
           if (this.isConnectedState && this.isAuthorized && this.currentWsUrl !== WS_PUBLIC_URL) {
             clearInterval(checkAuth)
             clearTimeout(timeout)
             console.log("[DerivAPI] OTP connection confirmed!")
+            this.isConnecting = false
             resolve()
           } else if (this.isConnectedState && this.currentWsUrl === WS_PUBLIC_URL) {
              // Fallback public connection already established
              clearInterval(checkAuth)
              clearTimeout(timeout)
+             this.isConnecting = false
              resolve()
           }
         }, 100)
