@@ -40,6 +40,7 @@ interface ActiveSubscription {
 
 class DerivAPI {
   private ws: WebSocket | null = null
+  private currentWsUrl: string = WS_PUBLIC_URL
   private handlers: Map<string, MessageHandler[]> = new Map()
   private reqId: number = 0
   private pendingRequests: Map<number, { resolve: Function; reject: Function }> = new Map()
@@ -119,9 +120,15 @@ class DerivAPI {
    */
   async connectWithOTP(otpUrl: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      // If already connected to this URL, just resolve
+      if (this.ws?.readyState === WebSocket.OPEN && this.currentWsUrl === otpUrl) {
         resolve()
         return
+      }
+
+      // Disconnect existing connection cleanly if it's connected to a different URL
+      if (this.ws) {
+        this.disconnect()
       }
 
       if (this.isConnecting) {
@@ -138,6 +145,8 @@ class DerivAPI {
       }
 
       this.isConnecting = true
+      this.currentWsUrl = otpUrl
+      this.shouldReconnect = true
 
       try {
         console.log("[DerivAPI] Connecting with OTP-authenticated URL...")
@@ -193,9 +202,15 @@ class DerivAPI {
 
   private connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      // If already connected to this URL, just resolve
+      if (this.ws?.readyState === WebSocket.OPEN && this.currentWsUrl === WS_PUBLIC_URL) {
         resolve()
         return
+      }
+
+      // Disconnect existing connection cleanly if it's connected to a different URL
+      if (this.ws) {
+        this.disconnect()
       }
 
       if (this.isConnecting) {
@@ -214,6 +229,8 @@ class DerivAPI {
       }
 
       this.isConnecting = true
+      this.currentWsUrl = WS_PUBLIC_URL
+      this.shouldReconnect = true
 
       try {
         this.ws = new WebSocket(WS_PUBLIC_URL)
@@ -289,7 +306,11 @@ class DerivAPI {
 
     setTimeout(() => {
       if (this.shouldReconnect) {
-        this.connect().then(() => {
+        const reconnectPromise = this.currentWsUrl === WS_PUBLIC_URL 
+          ? this.connect() 
+          : this.connectWithOTP(this.currentWsUrl);
+
+        reconnectPromise.then(() => {
           // Resubscribe to all active subscriptions
           this.resubscribe()
         })
