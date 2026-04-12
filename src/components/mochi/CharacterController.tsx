@@ -1,6 +1,10 @@
 import React, { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import type { MascotEmotion } from "../../contexts/GhostContext"
+import { getSoundManager } from "../../utils/soundManager"
+
+// TOGGLE THIS TO TRUE TO REVERT TO BUBU AND DUDU IMAGES
+const USE_ORIGINAL_CHARACTERS = false;
 
 interface CharacterControllerProps {
   emotion: MascotEmotion
@@ -17,21 +21,21 @@ const getCharacterImage = (isLead: boolean, emotion: MascotEmotion, raceState: s
     // Bubu (Panda)
     switch (emotion) {
       case "win":
-        return "/characters/bubu kiss dudu.gif"
+        return encodeURI("/characters/bubu kiss dudu.gif")
       case "lose":
-        return "/characters/Bubu turn around.gif"
+        return encodeURI("/characters/Bubu turn around.gif")
       default:
-        return raceState === "racing" ? "/characters/Bubu Dudu runing.gif" : "/characters/Bubu-and-Dudu.png"
+        return raceState === "racing" ? encodeURI("/characters/Bubu Dudu runing.gif") : encodeURI("/characters/Bubu-and-Dudu.png")
     }
   } else {
     // Dudu (Bunny)
     switch (emotion) {
       case "win":
-        return "/characters/Dudu Dancing.gif"
+        return encodeURI("/characters/Dudu Dancing.gif")
       case "lose":
-        return "/characters/Dudu Twist Bubu.gif"
+        return encodeURI("/characters/Dudu Twist Bubu.gif")
       default:
-        return raceState === "racing" ? "/characters/Dudu walking.gif" : "/characters/Dudu walking.gif"
+        return raceState === "racing" ? encodeURI("/characters/Dudu walking.gif") : encodeURI("/characters/Dudu walking.gif")
     }
   }
 }
@@ -91,12 +95,102 @@ const DuduPlaceholder = () => (
   </svg>
 )
 
+// New SVG Characters
+const MochiRacer: React.FC<{ emotion: MascotEmotion, raceState: string }> = ({ emotion }) => (
+  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-xl">
+    {/* Kart */}
+    <path d="M 20 70 L 80 70 Q 90 70 90 60 L 90 50 Q 90 45 80 45 L 20 45 Q 10 45 10 50 L 10 60 Q 10 70 20 70 Z" fill="#4CAF50" />
+    <circle cx="25" cy="70" r="10" fill="#333" />
+    <circle cx="25" cy="70" r="4" fill="#CCC" />
+    <circle cx="75" cy="70" r="10" fill="#333" />
+    <circle cx="75" cy="70" r="4" fill="#CCC" />
+    {/* Steering Wheel */}
+    <path d="M 70 45 L 75 35" stroke="#333" strokeWidth="3" />
+    <circle cx="75" cy="35" r="4" fill="#333" />
+    {/* Mochi Character */}
+    <circle cx="50" cy="35" r="20" fill="#FFFFFF" />
+    {/* Face */}
+    {emotion === 'win' ? (
+      <>
+        <path d="M 40 30 Q 45 25 50 30" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 50 30 Q 55 25 60 30" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 45 38 Q 50 45 55 38" stroke="#333" strokeWidth="2" fill="none" />
+      </>
+    ) : emotion === 'lose' ? (
+      <>
+        {/* Crying Eyes */}
+        <path d="M 38 32 Q 42 28 46 32" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 54 32 Q 58 28 62 32" stroke="#333" strokeWidth="2" fill="none" />
+        {/* Tears */}
+        <path d="M 42 36 Q 42 42 42 46 Q 44 46 44 42 Q 44 36 42 36 Z" fill="#87CEEB" />
+        <path d="M 58 36 Q 58 42 58 46 Q 60 46 60 42 Q 60 36 58 36 Z" fill="#87CEEB" />
+        {/* Sad Mouth */}
+        <path d="M 46 42 Q 50 38 54 42" stroke="#333" strokeWidth="2" fill="none" />
+      </>
+    ) : (
+      <>
+        <circle cx="42" cy="32" r="3" fill="#333" />
+        <circle cx="58" cy="32" r="3" fill="#333" />
+        <path d="M 46 38 Q 50 42 54 38" stroke="#333" strokeWidth="2" fill="none" />
+      </>
+    )}
+    {/* Blush */}
+    <circle cx="35" cy="38" r="4" fill="#FFB6C1" opacity="0.6" />
+    <circle cx="65" cy="38" r="4" fill="#FFB6C1" opacity="0.6" />
+  </svg>
+)
+
+const MotoRacer: React.FC<{ emotion: MascotEmotion, raceState: string }> = ({ emotion }) => (
+  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-xl">
+    {/* Kart */}
+    <path d="M 20 70 L 80 70 Q 90 70 90 60 L 90 50 Q 90 45 80 45 L 20 45 Q 10 45 10 50 L 10 60 Q 10 70 20 70 Z" fill="#FF4B4B" />
+    <circle cx="25" cy="70" r="10" fill="#333" />
+    <circle cx="25" cy="70" r="4" fill="#CCC" />
+    <circle cx="75" cy="70" r="10" fill="#333" />
+    <circle cx="75" cy="70" r="4" fill="#CCC" />
+    {/* Steering Wheel */}
+    <path d="M 70 45 L 75 35" stroke="#333" strokeWidth="3" />
+    <circle cx="75" cy="35" r="4" fill="#333" />
+    {/* Moto Character (Cat) */}
+    <circle cx="50" cy="35" r="18" fill="#FFD700" />
+    <polygon points="35,22 42,20 38,30" fill="#FFD700" />
+    <polygon points="65,22 58,20 62,30" fill="#FFD700" />
+    {/* Face */}
+    {emotion === 'win' ? (
+      <>
+        <path d="M 40 32 Q 45 28 48 32" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 52 32 Q 55 28 60 32" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 45 38 Q 50 42 55 38" stroke="#333" strokeWidth="2" fill="none" />
+      </>
+    ) : emotion === 'lose' ? (
+      <>
+        {/* Crying Eyes */}
+        <path d="M 38 34 Q 42 30 46 34" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 54 34 Q 58 30 62 34" stroke="#333" strokeWidth="2" fill="none" />
+        {/* Tears */}
+        <path d="M 42 38 Q 42 44 42 48 Q 44 48 44 44 Q 44 38 42 38 Z" fill="#87CEEB" />
+        <path d="M 58 38 Q 58 44 58 48 Q 60 48 60 44 Q 60 38 58 38 Z" fill="#87CEEB" />
+        {/* Sad Mouth */}
+        <path d="M 46 44 Q 50 40 54 44" stroke="#333" strokeWidth="2" fill="none" />
+      </>
+    ) : (
+      <>
+        <ellipse cx="42" cy="34" rx="2" ry="4" fill="#333" />
+        <ellipse cx="58" cy="34" rx="2" ry="4" fill="#333" />
+        <path d="M 48 40 L 50 42 L 52 40" stroke="#333" strokeWidth="1.5" fill="none" />
+      </>
+    )}
+  </svg>
+)
+
 // Image component with fallback
 const CharacterImage: React.FC<{
   src: string
   alt: string
   isLead: boolean
-}> = ({ src, alt, isLead }) => {
+  emotion: MascotEmotion
+  raceState: string
+}> = ({ src, alt, isLead, emotion, raceState }) => {
   const [hasError, setHasError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -105,9 +199,13 @@ const CharacterImage: React.FC<{
     setIsLoading(true)
   }, [src])
 
+  if (!USE_ORIGINAL_CHARACTERS) {
+    return isLead ? <MochiRacer emotion={emotion} raceState={raceState} /> : <MotoRacer emotion={emotion} raceState={raceState} />
+  }
+
   if (hasError) {
     return (
-      <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: isLead ? "#E8F4F8" : "#FFF0F5" }}>
+      <div className="w-full h-full flex items-center justify-center">
         {isLead ? <BubuPlaceholder /> : <DuduPlaceholder />}
       </div>
     )
@@ -116,7 +214,7 @@ const CharacterImage: React.FC<{
   return (
     <>
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: isLead ? "#E8F4F8" : "#FFF0F5" }}>
+        <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-pulse">
             {isLead ? <BubuPlaceholder /> : <DuduPlaceholder />}
           </div>
@@ -125,7 +223,8 @@ const CharacterImage: React.FC<{
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain drop-shadow-xl"
+        style={{ mixBlendMode: "multiply" }}
         onLoad={() => setIsLoading(false)}
         onError={() => {
           setHasError(true)
@@ -323,6 +422,33 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
     }
   }, [isJumping, jumpTime])
 
+  // Determine who is leading based on price change
+  // Mochi (Green) leads when price goes up. Moto (Red) leads when price goes down.
+  const isMochiLeading = priceChange >= 0
+  const isMotoLeading = priceChange < 0
+
+  // Add smooth overtaking animations via x offset
+  const MOTO_LEAD_X = 60
+  const MOTO_LAG_X = -60
+  const MOCHI_LEAD_X = 60
+  const MOCHI_LAG_X = -60
+
+  // We play a whoosh sound when the leader changes
+  const prevMotoLeading = useRef(isMotoLeading)
+  useEffect(() => {
+    if (prevMotoLeading.current !== isMotoLeading && raceState === "racing") {
+      const sm = getSoundManager()
+      sm.playWhoosh()
+    }
+    prevMotoLeading.current = isMotoLeading
+  }, [isMotoLeading, raceState])
+
+  // Determine specific emotion for each character based on trade result
+  // If trade wins: Moto (Blue/Up) smiles, Mochi (Red/Down) cries
+  // If trade loses: Mochi (Red/Down) smiles, Moto (Blue/Up) cries
+  const motoEmotion = emotion === "win" ? "win" : emotion === "lose" ? "lose" : emotion
+  const mochiEmotion = emotion === "win" ? "lose" : emotion === "lose" ? "win" : emotion
+
   // Calculate rotation based on slope (Mario-style tilt)
   const rotation = useMemo(() => {
     const maxUpRotation = 20
@@ -337,33 +463,33 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
     }
   }, [slope])
 
-  // Determine lead/lag based on price change
-  const isLeading = priceChange >= 0
-
   // Get particle type based on emotion
-  const getParticleType = (): 'hearts' | 'stars' | 'smoke' => {
-    if (emotion === "win") return "hearts"
-    if (emotion === "lose") return "stars"
+  const getParticleType = (charEmotion: MascotEmotion): 'hearts' | 'stars' | 'smoke' => {
+    if (charEmotion === "win") return "hearts"
+    if (charEmotion === "lose") return "stars"
     return "smoke"
   }
 
   return (
     <div 
-      className="absolute left-1/2 transform -translate-x-1/2 flex items-end gap-8" 
+      className="absolute left-1/2 transform -translate-x-1/2 flex items-end justify-center" 
       style={{ 
-        top: roadY > 0 ? `${roadY - 10}px` : "65%", // Position container's top at roadY (offset slightly for tire placement)
+        width: "300px", // Give a fixed width container so we can position absolutely within it
+        top: roadY > 0 ? `${roadY - 20}px` : "65%", // Position container's top perfectly at the road's top edge (road has 40px width, so -20px)
         zIndex: 20,
-        transform: `translateX(-50%) translateY(calc(-100% + ${jumpY}px))`, // Shift up by 100% so the bottom rests on roadY, then apply jump
+        transform: `translateX(-50%) translateY(calc(-100% + ${jumpY}px))`, // Shift up by 100% so the bottom rests on road top, then apply jump
         transition: "top 0.1s ease-out", // Smoothly follow the road
       }}
     >
-      {/* Bubu (Lead Character) */}
+      {/* Mochi (Red) */}
       <motion.div
-        className="relative"
+        className="absolute bottom-0"
         animate={{
-          rotate: isLeading ? rotation : rotation * 0.5,
-          scaleX: squashStretch.scaleX,
-          scaleY: squashStretch.scaleY,
+          x: isMochiLeading ? MOCHI_LEAD_X : MOCHI_LAG_X,
+          rotate: isMochiLeading ? rotation : rotation * 0.5,
+          scaleX: isMochiLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
+          scaleY: isMochiLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
+          zIndex: isMochiLeading ? 30 : 10,
         }}
         transition={{
           type: "spring",
@@ -376,36 +502,34 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         }}
       >
         <div
-          className="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden shadow-2xl"
-          style={{
-            border: "4px solid #B5C0D0",
-            boxShadow: "0 10px 40px rgba(181, 192, 208, 0.4)",
-            backgroundColor: "#E8F4F8",
-          }}
+          className="relative w-28 h-28 md:w-36 md:h-36"
         >
           <CharacterImage
-            src={getCharacterImage(true, emotion, raceState)}
-            alt="Bubu the Panda"
+            src={getCharacterImage(true, mochiEmotion, raceState)}
+            alt={USE_ORIGINAL_CHARACTERS ? "Bubu the Panda" : "Mochi Racer"}
             isLead={true}
+            emotion={mochiEmotion}
+            raceState={raceState}
           />
-          <ParticleEffect type={getParticleType()} isLead={true} />
+          <ParticleEffect type={getParticleType(mochiEmotion)} isLead={isMochiLeading} />
         </div>
 
         {/* Character label */}
         <motion.div
-          className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+          className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
           style={{
-            backgroundColor: "#B5C0D0",
+            backgroundColor: USE_ORIGINAL_CHARACTERS ? "#B5C0D0" : "#4CAF50",
             color: "#FFFFFF",
             fontFamily: "'Quicksand', sans-serif",
+            zIndex: 40,
           }}
           animate={{
-            scale: emotion === "win" ? [1, 1.2, 1] : 1,
+            scale: mochiEmotion === "win" ? [1, 1.2, 1] : 1,
             y: isJumping ? jumpY : 0,
           }}
-          transition={{ duration: 0.5, repeat: emotion === "win" ? Infinity : 0 }}
+          transition={{ duration: 0.5, repeat: mochiEmotion === "win" ? Infinity : 0 }}
         >
-          Bubu {isLeading ? "🏎️" : "🚗"}
+          {USE_ORIGINAL_CHARACTERS ? "Bubu" : "Mochi"} {isMochiLeading ? "🏎️" : "🚗"}
         </motion.div>
 
         {/* Speed lines when racing */}
@@ -414,7 +538,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
             {[...Array(3)].map((_, i) => (
               <motion.div
                 key={i}
-                className="h-0.5 bg-gray-400 rounded mb-2"
+                className="h-0.5 bg-green-400 rounded mb-2"
                 style={{ width: 20 + i * 10 }}
                 animate={{
                   x: [0, 30],
@@ -443,13 +567,15 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         )}
       </motion.div>
 
-      {/* Dudu (Lag Character) */}
+      {/* Moto (Blue) */}
       <motion.div
-        className="relative"
+        className="absolute bottom-0"
         animate={{
-          rotate: !isLeading ? rotation : rotation * 0.5,
-          scaleX: squashStretch.scaleX * 0.95,
-          scaleY: squashStretch.scaleY * 0.95,
+          x: isMotoLeading ? MOTO_LEAD_X : MOTO_LAG_X,
+          rotate: isMotoLeading ? rotation : rotation * 0.5,
+          scaleX: isMotoLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
+          scaleY: isMotoLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
+          zIndex: isMotoLeading ? 30 : 10,
         }}
         transition={{
           type: "spring",
@@ -463,36 +589,34 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         }}
       >
         <div
-          className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-xl"
-          style={{
-            border: "4px solid #FFB8D0",
-            boxShadow: "0 8px 30px rgba(255, 184, 208, 0.4)",
-            backgroundColor: "#FFF0F5",
-          }}
+          className="relative w-28 h-28 md:w-36 md:h-36"
         >
           <CharacterImage
-            src={getCharacterImage(false, emotion, raceState)}
-            alt="Dudu the Bunny"
+            src={getCharacterImage(false, motoEmotion, raceState)}
+            alt={USE_ORIGINAL_CHARACTERS ? "Dudu the Bunny" : "Moto Racer"}
             isLead={false}
+            emotion={motoEmotion}
+            raceState={raceState}
           />
-          <ParticleEffect type={getParticleType()} isLead={false} />
+          <ParticleEffect type={getParticleType(motoEmotion)} isLead={isMotoLeading} />
         </div>
 
         {/* Character label */}
         <motion.div
-          className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+          className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
           style={{
-            backgroundColor: "#FFB8D0",
+            backgroundColor: USE_ORIGINAL_CHARACTERS ? "#FFB8D0" : "#FF4B4B",
             color: "#FFFFFF",
             fontFamily: "'Quicksand', sans-serif",
+            zIndex: 40,
           }}
           animate={{
-            scale: emotion === "win" ? [1, 1.2, 1] : 1,
+            scale: motoEmotion === "win" ? [1, 1.2, 1] : 1,
             y: isJumping ? jumpY * 0.8 : 0,
           }}
-          transition={{ duration: 0.5, repeat: emotion === "win" ? Infinity : 0 }}
+          transition={{ duration: 0.5, repeat: motoEmotion === "win" ? Infinity : 0 }}
         >
-          Dudu {!isLeading ? "🏎️" : "🚗"}
+          {USE_ORIGINAL_CHARACTERS ? "Dudu" : "Moto"} {isMotoLeading ? "🏎️" : "🚗"}
         </motion.div>
 
         {/* Speed lines when racing */}
@@ -501,7 +625,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
             {[...Array(2)].map((_, i) => (
               <motion.div
                 key={i}
-                className="h-0.5 bg-pink-300 rounded mb-2"
+                className="h-0.5 bg-red-400 rounded mb-2"
                 style={{ width: 15 + i * 8 }}
                 animate={{
                   x: [0, 20],
@@ -521,35 +645,52 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
       {/* Race position indicator */}
       {raceState === "racing" && (
         <motion.div
-          className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-sm font-bold"
+          className="absolute -top-12 px-4 py-2 rounded-full text-sm font-bold z-50 whitespace-nowrap"
           style={{
-            backgroundColor: isLeading ? "#DFF2D8" : "#FFE5F0",
+            backgroundColor: isMochiLeading ? "#DFF2D8" : "#FFE5E5",
             color: "#8B5E3C",
-            border: `2px solid ${isLeading ? "#7CB876" : "#FFB8D0"}`,
+            border: `2px solid ${isMochiLeading ? "#7CB876" : "#FF4B4B"}`,
             fontFamily: "'Quicksand', sans-serif",
           }}
           animate={{
             scale: [1, 1.05, 1],
+            x: isMochiLeading ? MOCHI_LEAD_X - 40 : MOTO_LEAD_X - 40,
           }}
-          transition={{ duration: 1, repeat: Infinity }}
+          transition={{ 
+            duration: 1, 
+            repeat: Infinity,
+            x: { type: "spring", stiffness: 300, damping: 20 }
+          }}
         >
-          {isLeading ? "📈 Leading!" : "📉 Catching up!"}
+          {isMochiLeading ? "📈 Mochi Leading!" : "📉 Moto Leading!"}
         </motion.div>
       )}
 
       {/* Victory pose overlay */}
-      {raceState === "finished" && emotion === "win" && (
+      {raceState === "finished" && (
         <motion.div
-          className="absolute -top-16 left-1/2 transform -translate-x-1/2"
+          className="absolute -top-16 z-50"
           initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
+          animate={{ 
+            scale: 1, 
+            rotate: 0,
+            x: emotion === "win" ? MOTO_LEAD_X - 40 : MOCHI_LEAD_X - 40,
+          }}
           transition={{ type: "spring", stiffness: 200 }}
         >
-          <img
-            src="/characters/Bubu Dudu hugging.jpg"
-            alt="Victory!"
-            className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg"
-          />
+          {USE_ORIGINAL_CHARACTERS ? (
+            emotion === "win" && (
+              <img
+                src="/characters/Bubu Dudu hugging.jpg"
+                alt="Victory!"
+                className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg"
+              />
+            )
+          ) : (
+            <div className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg bg-white flex items-center justify-center text-3xl overflow-hidden">
+              <span className="animate-bounce">🏆</span>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

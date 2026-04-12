@@ -112,14 +112,56 @@ const ProceduralTrack: React.FC<ProceduralTrackProps> = ({
     }
 
     const quotes = tickHistory.map((t) => t.quote)
-    const minQuote = Math.min(...quotes)
-    const maxQuote = Math.max(...quotes)
+
+    // Apply moving average smoothing to the quotes
+    const windowSize = 5;
+    const smoothedQuotes = quotes.map((val, idx, arr) => {
+      const start = Math.max(0, idx - windowSize);
+      const end = Math.min(arr.length, idx + windowSize + 1);
+      const window = arr.slice(start, end);
+      return window.reduce((sum, v) => sum + v, 0) / window.length;
+    });
+
+    const minQuote = Math.min(...smoothedQuotes)
+    const maxQuote = Math.max(...smoothedQuotes)
     const range = maxQuote - minQuote || 1
 
-    return tickHistory.map((tick, i) => ({
-      x: (i / (tickHistory.length - 1)) * width,
-      y: height * 0.8 - ((tick.quote - minQuote) / range) * height * 0.4, // Base at 80% height, peaks up to 40% height
-    }))
+    // Reduce the number of points we feed into the spline for smoother waves
+    const targetPoints = 20;
+    const step = Math.max(1, Math.floor(smoothedQuotes.length / targetPoints));
+    
+    const reducedPoints = [];
+    for (let i = 0; i < smoothedQuotes.length; i += step) {
+      reducedPoints.push({
+        x: (i / (smoothedQuotes.length - 1)) * width,
+        y: height * 0.8 - ((smoothedQuotes[i] - minQuote) / range) * height * 0.4,
+      });
+    }
+    
+    // Ensure the last point is included for a complete track
+    if (reducedPoints[reducedPoints.length - 1].x !== width) {
+      reducedPoints.push({
+        x: width,
+        y: height * 0.8 - ((smoothedQuotes[smoothedQuotes.length - 1] - minQuote) / range) * height * 0.4,
+      })
+    }
+
+    // Make the track seamlessly loop to prevent vertical walls when scrolling
+    if (reducedPoints.length > 2) {
+      const firstY = reducedPoints[0].y;
+      const lastY = reducedPoints[reducedPoints.length - 1].y;
+      const matchY = (firstY + lastY) / 2;
+      
+      reducedPoints[0].y = matchY;
+      reducedPoints[reducedPoints.length - 1].y = matchY;
+      
+      if (reducedPoints.length > 4) {
+        reducedPoints[1].y = (reducedPoints[1].y + matchY) / 2;
+        reducedPoints[reducedPoints.length - 2].y = (reducedPoints[reducedPoints.length - 2].y + matchY) / 2;
+      }
+    }
+
+    return reducedPoints;
   }, [tickHistory, dimensions])
 
   // Generate smooth curve points
