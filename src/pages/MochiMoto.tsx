@@ -231,7 +231,7 @@ function MochiMotoContent() {
   const priceChange = lastTick && secondLastTick ? lastTick.quote - secondLastTick.quote : 0
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: "#FFF9F2" }}>
+    <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF9F2" }}>
       {/* Google Font */}
       <link 
         href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" 
@@ -239,7 +239,7 @@ function MochiMotoContent() {
       />
 
       {/* Header */}
-      <header className="border-b-2 sticky top-0 z-50 backdrop-blur-sm" style={{ 
+      <header className="flex-shrink-0 border-b-2 relative z-50 backdrop-blur-sm" style={{ 
         backgroundColor: "rgba(255, 249, 242, 0.9)",
         borderColor: "#F0E4D7"
       }}>
@@ -313,7 +313,7 @@ function MochiMotoContent() {
       )}
 
       {/* Main Game Area */}
-      <main className="relative" style={{ height: "calc(100vh - 140px)" }}>
+      <main className="flex-1 relative w-full">
         {/* Parallax Background - Layer 0 */}
         <div style={{ zIndex: 0 }}>
           <ParallaxBackground scrollOffset={scrollOffset} />
@@ -389,6 +389,31 @@ function MochiMotoContent() {
             </div>
           </div>
         )}
+
+        {/* Decorative Meadow Between Map and Trade Panel */}
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[calc(100%-32rem)] max-w-2xl h-24 z-20 pointer-events-none flex items-end justify-center overflow-hidden">
+          <div className="relative w-full h-full flex items-end justify-center">
+            {/* Back Grass Layer */}
+            <div className="absolute bottom-1 flex justify-center w-full gap-4 text-3xl opacity-60">
+              <span>🌾</span><span>🌿</span><span>🌾</span><span>🍀</span><span>🌾</span><span>🌿</span><span>🌾</span>
+            </div>
+            
+            {/* Middle Flower Layer */}
+            <div className="absolute bottom-2 flex justify-center w-full gap-6 text-5xl opacity-90 drop-shadow-md pb-2">
+              <span className="transform -rotate-12">🌸</span>
+              <span className="transform translate-y-2">🌷</span>
+              <span className="transform rotate-6">🌼</span>
+              <span className="transform -translate-y-1 -rotate-6">🌺</span>
+              <span className="transform rotate-12">🌻</span>
+              <span className="transform translate-y-1">🌸</span>
+            </div>
+            
+            {/* Front Grass Layer */}
+            <div className="absolute -bottom-1 flex justify-center w-full gap-2 text-4xl opacity-80">
+              <span>🌿</span><span>🪴</span><span>🍀</span><span>🌿</span><span>🪴</span><span>🍀</span><span>🌿</span>
+            </div>
+          </div>
+        </div>
 
         {/* Ghost Trading Panel */}
         <div className="absolute bottom-4 right-4 z-40 w-96">
