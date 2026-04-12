@@ -11,7 +11,7 @@ interface DepositWithdrawProps {
 }
 
 const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
-  const { accountType, currency } = useAccount()
+  const { accountType } = useAccount()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -30,7 +30,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
 
     try {
       const api = getDerivAPI()
-      const url = await api.deposit(currency || "USD")
+      const url = await api.deposit()
       window.open(url, "_blank", "noopener,noreferrer")
       setSuccess("Deposit page opened in a new tab")
     } catch (err) {
@@ -53,7 +53,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({ className }) => {
 
     try {
       const api = getDerivAPI()
-      const url = await api.withdraw(currency || "USD")
+      const url = await api.withdraw()
       window.open(url, "_blank", "noopener,noreferrer")
       setSuccess("Withdrawal page opened in a new tab")
     } catch (err) {
