@@ -339,7 +339,7 @@ class DerivAPI {
       // Resubscribe to ticks and OHLC
       const subscriptionsToRestore = Array.from(this.activeSubscriptions.entries())
       
-      for (const [key, sub] of subscriptionsToRestore) {
+      for (const [, sub] of subscriptionsToRestore) {
         // Only resubscribe to market data (ticks/ohlc) to fix chart freeze
         if (sub.type === 'ticks') {
           const { symbol } = sub.params
