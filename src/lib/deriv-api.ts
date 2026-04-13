@@ -378,6 +378,16 @@ class DerivAPI {
       return
     }
 
+    // Handle pending requests
+    if ("echo_req" in data && data.echo_req) {
+      const reqId = (data.echo_req as any).req_id
+      if (reqId && this.pendingRequests.has(reqId)) {
+        const { resolve } = this.pendingRequests.get(reqId)!
+        this.pendingRequests.delete(reqId)
+        resolve(data)
+      }
+    }
+
     // Handle authorization response - Deriv API returns msg_type: "authorize"
     if ("msg_type" in data && data.msg_type === "authorize") {
       // ✅ FIX: Prevent duplicate authorization handling with mutex
@@ -415,7 +425,6 @@ class DerivAPI {
               subscription: { id: "existing" },
               msg_type: (data.echo_req as any).ticks ? "tick" : "ohlc"
             })
-            return
           }
         }
         return
@@ -434,17 +443,6 @@ class DerivAPI {
         }
       }
       return
-    }
-
-    // Handle pending requests
-    if ("echo_req" in data && data.echo_req) {
-      const reqId = (data.echo_req as any).req_id
-      if (reqId && this.pendingRequests.has(reqId)) {
-        const { resolve } = this.pendingRequests.get(reqId)!
-        this.pendingRequests.delete(reqId)
-        resolve(data)
-        return
-      }
     }
 
     // Handle subscription messages
