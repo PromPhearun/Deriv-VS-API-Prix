@@ -190,12 +190,12 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
             {isDemo ? (
               <p className="flex items-center gap-1.5">
                 <User className="h-3 w-3" />
-                {loginId}
+                Demo Account
               </p>
             ) : (
               <p className="flex items-center gap-1.5">
                 <ShieldCheck className="h-3 w-3 text-green-500" />
-                {loginId || "Not connected"}
+                {loginId ? `Real Account: ${loginId}` : "Not connected"}
               </p>
             )}
           </div>

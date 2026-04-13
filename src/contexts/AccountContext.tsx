@@ -137,14 +137,25 @@ export function AccountProvider({ children }: AccountProviderProps) {
         // Step 2: Authenticate with token (now has 30-second timeout)
         console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Authenticating with token...`)
         const authResponse = await api.authorize(accessToken)
-        console.log("[AccountContext] Raw auth response:", JSON.stringify(authResponse, null, 2))
+        console.log("[AccountContext] 🔍 Raw auth response:", JSON.stringify(authResponse, null, 2))
+        
+        // 🐛 DEBUG: Log all possible balance locations
+        console.log("[AccountContext] 🔍 Balance debugging:", {
+          "authResponse.balance": authResponse.balance,
+          "typeof balance": typeof authResponse.balance,
+          "authResponse.currency": authResponse.currency,
+          "authResponse.loginid": authResponse.loginid,
+          "authResponse.login_id": authResponse.login_id,
+          "Full response keys": Object.keys(authResponse)
+        })
         
         // Extract account details from response (Deriv API format)
+        // The balance should be a number from the authorize response
         const accountBalance = typeof authResponse.balance === 'number' ? authResponse.balance : 0
         const accountCurrency = authResponse.currency || "USD"
         const accountId = authResponse.loginid || authResponse.login_id || null
         
-        console.log("[AccountContext] Extracted values:", {
+        console.log("[AccountContext] ✅ Extracted values:", {
           balance: accountBalance,
           currency: accountCurrency,
           loginId: accountId
@@ -153,12 +164,36 @@ export function AccountProvider({ children }: AccountProviderProps) {
         // Update state with connected account info
         setAccountInfo((prev) => ({
           ...prev,
+          accountType: "real", // Ensure account type is set to real
           balance: accountBalance,
           currency: accountCurrency,
           loginId: accountId,
           isConnected: true,
           isConnecting: false,
         }))
+        
+        console.log("[AccountContext] ✅ State updated - Real account connected:", {
+          loginId: accountId,
+          balance: accountBalance,
+          currency: accountCurrency
+        })
+        
+        // Subscribe to balance updates to keep UI in sync with real-time changes
+        try {
+          console.log("[AccountContext] 📡 Subscribing to balance updates...")
+          api.subscribeBalance((balanceData) => {
+            console.log("[AccountContext] 💰 Balance update received:", balanceData)
+            setAccountInfo((prev) => ({
+              ...prev,
+              balance: balanceData.balance,
+              currency: balanceData.currency || prev.currency,
+            }))
+          })
+          console.log("[AccountContext] ✅ Balance subscription active")
+        } catch (balanceError) {
+          console.warn("[AccountContext] ⚠️ Balance subscription failed (non-critical):", balanceError)
+          // Don't fail the authentication if balance subscription fails
+        }
         
         // Reset retry counter on success
         authRetryCountRef.current = 0
