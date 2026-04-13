@@ -58,7 +58,6 @@ class DerivAPI {
   private pendingRequestsQueue: Array<() => void> = [] // Queue for requests sent before WebSocket is ready
   private isSubscribing: boolean = false // Mutex to prevent concurrent subscription requests
   private isHandlingAuth: boolean = false // Mutex to prevent duplicate auth handling
-  private authToken: string | null = null
 
   constructor() {
     // Don't auto-connect in constructor - let the app control when to connect
@@ -594,7 +593,6 @@ class DerivAPI {
 
   async authorize(token: string): Promise<any> {
     const reqId = this.getNextReqId()
-    this.authToken = token
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(reqId, {
@@ -1944,7 +1942,6 @@ class DerivAPI {
     this.isConnecting = false
     this.isConnectedState = false
     this.isAuthorized = false
-    this.authToken = null
     this.handlers.clear()
     this.pendingRequests.clear()
     this.subscriptions.clear()
