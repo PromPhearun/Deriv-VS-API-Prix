@@ -150,42 +150,53 @@ export function AccountProvider({ children }: AccountProviderProps) {
         const tokenString = String(accessToken).trim()
         const authResponse = await api.authorize(tokenString)
         
-        console.log("[AccountContext] Raw authorize response:", {
-          "authResponse.balance": authResponse.balance,
-          "typeof balance": typeof authResponse.balance,
-          "authResponse.currency": authResponse.currency,
-          "authResponse.loginid": authResponse.loginid,
-          "authResponse.login_id": authResponse.login_id,
-          "Full response keys": Object.keys(authResponse)
-        })
+        console.log("[AccountContext] Raw authorize response:", authResponse)
 
-        // Extract account details from response (Deriv API format)
-        // The balance should be a number from the authorize response
-        const accountBalance = typeof authResponse.balance === 'number' ? authResponse.balance : 0
-        const accountCurrency = authResponse.currency || "USD"
-        const accountId = authResponse.loginid || authResponse.login_id || null
+        // Find the actual Real account from account_list
+        const accountList = authResponse.account_list || []
+        const currentLoginId = authResponse.loginid
+        const currentAccount = accountList.find((a: any) => a.loginid === currentLoginId)
+        
+        let realAccountLoginId = currentLoginId
+        let realBalance = typeof authResponse.balance === 'number' ? authResponse.balance : 0
+        let realCurrency = authResponse.currency || "USD"
+
+        if (currentAccount?.is_virtual) {
+          // If authorized into Demo, try to find a Real account
+          const realAccount = accountList.find((a: any) => !a.is_virtual)
+          if (realAccount) {
+             console.log("[AccountContext] Authorized as Demo, but found Real Account:", realAccount.loginid)
+             realAccountLoginId = realAccount.loginid
+             // Since we didn't authorize this real account directly, its balance might not be available
+             // but we'll show $0 until they explicitly switch/authorize
+             realBalance = typeof realAccount.balance === 'number' ? realAccount.balance : 0
+             realCurrency = realAccount.currency || "USD"
+          } else {
+             console.warn("[AccountContext] No real account found in account list")
+          }
+        }
         
         console.log("[AccountContext] ✅ Extracted values:", {
-          balance: accountBalance,
-          currency: accountCurrency,
-          loginId: accountId
+          balance: realBalance,
+          currency: realCurrency,
+          loginId: realAccountLoginId
         })
         
         // Update state with connected account info
         setAccountInfo((prev) => ({
           ...prev,
           accountType: "real", // Ensure account type is set to real
-          balance: accountBalance,
-          currency: accountCurrency,
-          loginId: accountId,
+          balance: realBalance,
+          currency: realCurrency,
+          loginId: realAccountLoginId,
           isConnected: true,
           isConnecting: false,
         }))
         
         console.log("[AccountContext] ✅ State updated - Real account connected:", {
-          loginId: accountId,
-          balance: accountBalance,
-          currency: accountCurrency
+          loginId: realAccountLoginId,
+          balance: realBalance,
+          currency: realCurrency
         })
         
         // Subscribe to balance updates to keep UI in sync with real-time changes
