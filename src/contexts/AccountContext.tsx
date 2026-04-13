@@ -119,6 +119,13 @@ export function AccountProvider({ children }: AccountProviderProps) {
       isConnecting: true,
     }))
 
+    if (!accessToken) {
+      console.error("[AccountContext] Cannot connect real account: No access token provided")
+      isAuthenticatingRef.current = false
+      setAccountInfo(prev => ({ ...prev, isConnecting: false }))
+      return
+    }
+
     // Retry logic with exponential backoff
     let lastError: Error | null = null
     

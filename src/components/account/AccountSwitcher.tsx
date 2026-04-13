@@ -69,10 +69,18 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
       }
 
       const tokenResponse = await response.json()
-      console.log("[AccountSwitcher] Token exchange successful")
+      console.log("[AccountSwitcher] Token exchange successful:", tokenResponse)
       
       // Connect with the access token (with retry logic)
-      await connectReal(tokenResponse.access_token)
+      // The OAuth endpoint returns token1, token2, etc. depending on accounts linked
+      // token1 is typically the primary access token
+      const accessToken = tokenResponse.access_token || tokenResponse.token1 || Object.values(tokenResponse).find(v => typeof v === 'string' && v.length > 20)
+      
+      if (!accessToken) {
+        throw new Error("Invalid token response: No access token found")
+      }
+      
+      await connectReal(accessToken as string)
     } catch (error) {
       console.error("[AccountSwitcher] OAuth callback failed:", error)
       const errorMessage = error instanceof Error ? error.message : "OAuth authentication failed"
