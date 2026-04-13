@@ -1083,7 +1083,7 @@ class DerivAPI {
 
       this.send({
         buy: proposalId,
-        price,
+        price: Number(price),
         req_id: reqId,
       })
 
