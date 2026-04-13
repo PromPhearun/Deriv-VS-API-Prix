@@ -198,6 +198,9 @@ export function AccountProvider({ children }: AccountProviderProps) {
           console.warn("[AccountContext] Failed to restore subscriptions:", err)
         });
         
+        // Trigger event so charts know connection changed
+        window.dispatchEvent(new CustomEvent('account_connected', { detail: { accountType: 'real' } }))
+        
         let realAccountLoginId = accountId
         let realBalance = realAccount.balance || 0
         let realCurrency = realAccount.currency || "USD"
@@ -292,21 +295,24 @@ export function AccountProvider({ children }: AccountProviderProps) {
       // Set up authorize response handler
       authorizeHandlerRef.current = api.on("authorize", handleAuthorize)
 
-      // Auto-reconnect if we have a valid token but aren't connected
-      const storedToken = localStorage.getItem("deriv_access_token")
-      if (storedToken && storedToken !== "undefined" && storedToken !== "null" && !accountInfo.isConnected && !accountInfo.isConnecting) {
-        console.log("[AccountContext] Found valid stored token, auto-reconnecting...")
-        connectReal(storedToken).catch(err => {
-          console.error("[AccountContext] Auto-reconnect failed, falling back to demo:", err)
-          disconnect()
-        })
-      } else {
-        // Skip balance fetch on public endpoint - it requires authentication
-        // Balance will be fetched when user connects via OAuth
-        console.log("[AccountContext] Real account selected - waiting for OAuth authentication")
-      }
+    // Auto-reconnect if we have a valid token but aren't connected
+    const storedToken = localStorage.getItem("deriv_access_token")
+    if (storedToken && storedToken !== "undefined" && storedToken !== "null" && !accountInfo.isConnected && !accountInfo.isConnecting) {
+      console.log("[AccountContext] Found valid stored token, auto-reconnecting...")
+      connectReal(storedToken).catch(err => {
+        console.error("[AccountContext] Auto-reconnect failed, falling back to demo:", err)
+        disconnect()
+      })
+    } else if (accountInfo.isConnected) {
+      // Trigger an event so other components know connection is restored
+      window.dispatchEvent(new CustomEvent('account_connected', { detail: { accountType: 'real' } }))
+    } else {
+      // Skip balance fetch on public endpoint - it requires authentication
+      // Balance will be fetched when user connects via OAuth
+      console.log("[AccountContext] Real account selected - waiting for OAuth authentication")
+    }
 
-      return () => {
+    return () => {
         // Clean up handlers
         if (balanceHandlerRef.current) {
           api.off("balance", balanceHandlerRef.current)

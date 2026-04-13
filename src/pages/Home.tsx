@@ -328,13 +328,29 @@ function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSymbol]) // Only react to symbol changes
 
-  // Handle chart style changes - switch between tick and OHLC streams
-  useEffect(() => {
-    // CRITICAL: Skip if initialization hasn't completed yet
-    if (!hasInitializedRef.current) return
-    if (!isConnected) return
-    
-    const handleChartStyleChange = async () => {
+    // Listen for account connection changes to force re-subscribe
+    useEffect(() => {
+      const handleAccountConnected = async (e: Event) => {
+        console.log("[Home] Account connected event received, re-subscribing...")
+        if (currentSymbol) {
+          // Force complete cleanup
+          await cleanupSubscriptions()
+          // Re-subscribe
+          await subscribeToStream(currentSymbol, chartStyle)
+        }
+      }
+      
+      window.addEventListener('account_connected', handleAccountConnected)
+      return () => window.removeEventListener('account_connected', handleAccountConnected)
+    }, [currentSymbol, chartStyle, subscribeToStream, cleanupSubscriptions])
+
+    // Handle chart style changes - switch between tick and OHLC streams
+    useEffect(() => {
+      // CRITICAL: Skip if initialization hasn't completed yet
+      if (!hasInitializedRef.current) return
+      if (!isConnected) return
+      
+      const handleChartStyleChange = async () => {
       console.log("[Home] Chart style changed to:", chartStyle)
       
       // Clean up ALL previous subscriptions (handlers + API)
