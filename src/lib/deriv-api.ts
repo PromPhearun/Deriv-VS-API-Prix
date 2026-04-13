@@ -321,6 +321,45 @@ class DerivAPI {
     }, delay)
   }
 
+  async restoreSubscriptions(): Promise<void> {
+    console.log("[DerivAPI] Restoring active subscriptions")
+
+    // Wait until connection is ready
+    const isReady = await this.waitUntilReady(10000)
+    if (!isReady) {
+      console.error("[DerivAPI] Cannot restore subscriptions: connection not ready")
+      return
+    }
+
+    try {
+      // Clean up existing subscriptions first
+      try { await this.forgetAll('ticks') } catch (e) { /* ignore */ }
+      try { await this.forgetAll('candles') } catch (e) { /* ignore */ }
+      
+      // Resubscribe to ticks and OHLC
+      const subscriptionsToRestore = Array.from(this.activeSubscriptions.entries())
+      
+      for (const [key, sub] of subscriptionsToRestore) {
+        // Only resubscribe to market data (ticks/ohlc) to fix chart freeze
+        if (sub.type === 'ticks') {
+          const { symbol } = sub.params
+          if (symbol) {
+             console.log(`[DerivAPI] Restoring tick subscription for ${symbol}`)
+             await this.subscribeTicks(symbol, sub.callback as any)
+          }
+        } else if (sub.type === 'ohlc') {
+          const { symbol, granularity } = sub.params
+          if (symbol && granularity) {
+             console.log(`[DerivAPI] Restoring OHLC subscription for ${symbol}`)
+             await this.subscribeOHLC(symbol, granularity, sub.callback as any)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[DerivAPI] Error restoring subscriptions:", error)
+    }
+  }
+
   private async resubscribe(): Promise<void> {
     console.log("[DerivAPI] Resubscribing to active subscriptions")
 
