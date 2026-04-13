@@ -142,45 +142,60 @@ export function AccountProvider({ children }: AccountProviderProps) {
         console.log(`[AccountContext] Waiting for WebSocket to stabilize...`)
         await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // Step 2: Authenticate with token (now has 30-second timeout)
-        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Authenticating with token...`)
-        console.log(`[AccountContext] Token type being passed to API:`, typeof accessToken)
+        // Step 2: Authenticate using OTP flow
+        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Authenticating with OTP flow...`)
         
-        // Ensure token is strictly a string before passing to authorize
+        // Ensure token is strictly a string
         const tokenString = String(accessToken).trim()
-        const authResponse = await api.authorize(tokenString)
         
-        console.log("[AccountContext] Raw authorize response:", authResponse)
-
-        // Find the actual Real account from account_list
-        const accountList = authResponse.account_list || []
-        const currentLoginId = authResponse.loginid
-        const currentAccount = accountList.find((a: any) => a.loginid === currentLoginId)
-        
-        let realAccountLoginId = currentLoginId
-        let realBalance = typeof authResponse.balance === 'number' ? authResponse.balance : 0
-        let realCurrency = authResponse.currency || "USD"
-
-        if (currentAccount?.is_virtual) {
-          // If authorized into Demo, try to find a Real account
-          const realAccount = accountList.find((a: any) => !a.is_virtual)
-          if (realAccount) {
-             console.log("[AccountContext] Authorized as Demo, but found Real Account:", realAccount.loginid)
-             realAccountLoginId = realAccount.loginid
-             // Since we didn't authorize this real account directly, its balance might not be available
-             // but we'll show $0 until they explicitly switch/authorize
-             realBalance = typeof realAccount.balance === 'number' ? realAccount.balance : 0
-             realCurrency = realAccount.currency || "USD"
-          } else {
-             console.warn("[AccountContext] No real account found in account list")
+        // 1. Fetch accounts to get an account_id
+        const accountsResponse = await fetch("https://api.derivws.com/trading/v1/options/accounts", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${tokenString}`,
+            "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089"
           }
+        });
+        
+        if (!accountsResponse.ok) {
+          throw new Error(`Failed to fetch accounts: ${accountsResponse.statusText}`);
         }
         
-        console.log("[AccountContext] ✅ Extracted values:", {
-          balance: realBalance,
-          currency: realCurrency,
-          loginId: realAccountLoginId
-        })
+        const accountsData = await accountsResponse.json();
+        if (!accountsData.data || accountsData.data.length === 0) {
+          throw new Error("No accounts found for this user");
+        }
+        
+        // Find a real account if possible, otherwise use the first one
+        const realAccount = accountsData.data.find((a: any) => a.account_type !== "demo") || accountsData.data[0];
+        const accountId = realAccount.account_id;
+        
+        console.log(`[AccountContext] Found account ID: ${accountId}, requesting OTP...`);
+        
+        // 2. Request OTP for the account
+        const otpResponse = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${accountId}/otp`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${tokenString}`,
+            "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089"
+          }
+        });
+        
+        if (!otpResponse.ok) {
+          throw new Error(`Failed to get OTP: ${otpResponse.statusText}`);
+        }
+        
+        const otpData = await otpResponse.json();
+        const otpUrl = otpData.data.url;
+        
+        console.log(`[AccountContext] Received OTP URL, connecting WebSocket...`);
+        
+        // 3. Connect WebSocket using OTP URL
+        await api.connectWithOTP(otpUrl);
+        
+        let realAccountLoginId = accountId
+        let realBalance = realAccount.balance || 0
+        let realCurrency = realAccount.currency || "USD"
         
         // Update state with connected account info
         setAccountInfo((prev) => ({
