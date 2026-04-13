@@ -23,7 +23,7 @@ interface PKCEChallenge {
   state: string
 }
 
-export function generatePKCEChallenge(): PKCEChallenge {
+export async function generatePKCEChallenge(): Promise<PKCEChallenge> {
   const array = new Uint8Array(64)
   crypto.getRandomValues(array)
   const codeVerifier = Array.from(array)
@@ -32,16 +32,16 @@ export function generatePKCEChallenge(): PKCEChallenge {
 
   const encoder = new TextEncoder()
   const data = encoder.encode(codeVerifier)
-  return crypto.subtle.digest("SHA-256", data).then((hash) => {
-    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "")
+  const hash = await crypto.subtle.digest("SHA-256", data)
+  
+  const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "")
 
-    const state = generateId()
+  const state = generateId()
 
-    return { codeVerifier, codeChallenge, state }
-  }) as unknown as PKCEChallenge
+  return { codeVerifier, codeChallenge, state }
 }
 
 export function getAuthorizationUrl(config: OAuthConfig, pkce: PKCEChallenge): string {

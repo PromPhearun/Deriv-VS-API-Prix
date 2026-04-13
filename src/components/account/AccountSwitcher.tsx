@@ -16,97 +16,123 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
 
   const isDemo = accountType === "demo"
 
-  // Check for PKCE OAuth callback on mount
+  // Check for Classic OAuth implicit callback on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const token1 = params.get("token1")
     const code = params.get("code")
+    const state = params.get("state")
+    const authError = params.get("error")
     
-    if (code) {
-      console.log("[AccountSwitcher] Received OAuth code, exchanging for token...")
-      handleOAuthCallback(code)
-      // Clean up URL to remove code
+    if (token1) {
+      console.log("[AccountSwitcher] Received classic OAuth token in URL")
+      handleClassicOAuthCallback(token1)
+      // Clean up URL to remove sensitive tokens
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (code) {
+      console.log("[AccountSwitcher] Received V2 PKCE OAuth code in URL")
+      handleV2OAuthCallback(code, state, authError)
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
 
-  const handleOAuthCallback = useCallback(async (code: string) => {
+  const handleV2OAuthCallback = useCallback(async (code: string, state: string | null, authError: string | null) => {
     try {
       setError(null)
-      console.log("[AccountSwitcher] Processing OAuth callback...")
+      if (authError) {
+        throw new Error(`Authorization failed: ${authError}`)
+      }
       
-      const codeVerifier = localStorage.getItem("deriv_code_verifier")
+      const storedState = sessionStorage.getItem("oauth_state")
+      if (state !== storedState) {
+        throw new Error("State mismatch! Possible CSRF attack.")
+      }
+      
+      const codeVerifier = sessionStorage.getItem("pkce_code_verifier")
       if (!codeVerifier) {
-        throw new Error("Missing code verifier. Please try connecting again.")
-      }
-
-      const redirectUri = window.location.origin
-      const clientId = import.meta.env.VITE_DERIV_APP_ID
-
-      const response = await fetch("/api/exchange-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code,
-          codeVerifier,
-          clientId,
-          redirectUri,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to exchange token")
-      }
-
-      const data = await response.json()
-      console.log("[AccountSwitcher] Token exchange successful, passing access_token to connectReal:", data.access_token ? "Found" : "Missing")
-      
-      // Only pass the access_token string to connectReal!
-      if (!data.access_token) {
-        throw new Error("Invalid token response from server")
+        throw new Error("No PKCE code verifier found in session.")
       }
       
-      await connectReal(data.access_token)
+      const clientId = "32VnV8czGxufJh1E0GQUD"
+      const redirectUri = window.location.hostname === "localhost" 
+        ? "http://localhost:5173/" 
+        : "https://promotrade.netlify.app/"
+        
+      const { exchangeCodeForToken, storeTokens } = await import("../../lib/auth")
       
-      // Cleanup
-      localStorage.removeItem("deriv_code_verifier")
+      console.log("[AccountSwitcher] Exchanging code for token...")
+      const tokenResponse = await exchangeCodeForToken(code, {
+        clientId,
+        redirectUri
+      }, codeVerifier)
+      
+      storeTokens(tokenResponse)
+      
+      // Clear session variables
+      sessionStorage.removeItem("pkce_code_verifier")
+      sessionStorage.removeItem("oauth_state")
+      
+      console.log("[AccountSwitcher] Token received, connecting...")
+      await connectReal(tokenResponse.access_token)
+    } catch (err) {
+      console.error("[AccountSwitcher] V2 OAuth callback failed:", err)
+      setError(err instanceof Error ? err.message : "OAuth authentication failed")
+    }
+  }, [connectReal])
+
+  const handleClassicOAuthCallback = useCallback(async (token: string) => {
+    try {
+      setError(null)
+      console.log("[AccountSwitcher] Connecting with classic OAuth token...")
+      await connectReal(token)
     } catch (error) {
       console.error("[AccountSwitcher] OAuth callback failed:", error)
       const errorMessage = error instanceof Error ? error.message : "OAuth authentication failed"
-      setError(errorMessage)
+      
+      // Provide user-friendly error messages
+      if (errorMessage.includes("timeout")) {
+        setError("Connection timeout. Please check your internet and try again.")
+      } else if (errorMessage.includes("Authentication failed after")) {
+        setError("Unable to connect to your Deriv account. Please try again or contact support.")
+      } else {
+        setError(errorMessage)
+      }
     }
   }, [connectReal])
 
   const handleConnectReal = useCallback(async () => {
+    setError(null)
+    const clientId = "32VnV8czGxufJh1E0GQUD" // V2 OAuth Client ID
+
+    console.log("[AccountSwitcher] Starting V2 PKCE OAuth flow...")
+    
     try {
-      setError(null)
-      const appId = import.meta.env.VITE_DERIV_APP_ID
-
-      console.log("[AccountSwitcher] Starting PKCE OAuth flow...")
-      console.log("[AccountSwitcher] Client ID:", appId)
-
-      if (!appId) {
-        throw new Error("OAuth App ID not configured")
-      }
-
-      // Generate PKCE challenge
-      const { generatePKCEChallenge, getAuthorizationUrl } = await import("../../lib/auth")
+      const { generatePKCEChallenge } = await import("../../lib/auth")
       const pkce = await generatePKCEChallenge()
       
-      // Store verifier for later
-      localStorage.setItem("deriv_code_verifier", pkce.codeVerifier)
+      sessionStorage.setItem("pkce_code_verifier", pkce.codeVerifier)
+      sessionStorage.setItem("oauth_state", pkce.state)
 
-      const redirectUri = window.location.origin
-      const oauthUrl = getAuthorizationUrl({
-        clientId: appId,
-        redirectUri,
-      }, pkce)
+      const authUrl = new URL("https://auth.deriv.com/oauth2/auth")
+      authUrl.searchParams.set("response_type", "code")
+      authUrl.searchParams.set("client_id", clientId)
       
-      console.log("[AccountSwitcher] Redirecting to:", oauthUrl)
-      window.location.href = oauthUrl
+      // Determine redirect URI based on environment
+      const redirectUri = window.location.hostname === "localhost" 
+        ? "http://localhost:5173/" 
+        : "https://promotrade.netlify.app/"
+        
+      authUrl.searchParams.set("redirect_uri", redirectUri)
+      authUrl.searchParams.set("scope", "trade account_management")
+      authUrl.searchParams.set("state", pkce.state)
+      authUrl.searchParams.set("code_challenge", pkce.codeChallenge)
+      authUrl.searchParams.set("code_challenge_method", "S256")
+
+      console.log("[AccountSwitcher] Redirecting to:", authUrl.toString())
+      window.location.href = authUrl.toString()
     } catch (err) {
       console.error("[AccountSwitcher] Failed to start OAuth flow:", err)
-      setError(err instanceof Error ? err.message : "Failed to start connection process")
+      setError("Failed to start authentication process. Please try again.")
     }
   }, [])
 
