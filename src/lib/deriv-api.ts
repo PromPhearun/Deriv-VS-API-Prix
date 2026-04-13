@@ -1039,6 +1039,10 @@ class DerivAPI {
       this.on("proposal", handler)
 
       // Use 'symbol' parameter (not 'underlying')
+      // Deriv API expects "symbol" as the property name for the asset in the proposal request
+      // Make sure we use the correct parameter for the API call
+      // "symbol" is correctly defined in the official API docs
+      // Clean up the request by removing symbol if it exists as an object
       const request = {
         proposal: 1,
         amount: params.amount,
@@ -1047,7 +1051,7 @@ class DerivAPI {
         currency: params.currency || "USD",
         duration: params.duration,
         duration_unit: params.duration_unit,
-        symbol: params.symbol,
+        symbol: typeof params.symbol === 'object' ? (params.symbol as any)?.symbol : params.symbol,
         req_id: reqId,
         ...(params.barrier && { barrier: params.barrier }),
       }
