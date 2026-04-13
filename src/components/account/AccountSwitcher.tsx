@@ -71,11 +71,20 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
       const tokenResponse = await response.json()
       console.log("[AccountSwitcher] Token exchange successful")
       
-      // Connect with the access token
+      // Connect with the access token (with retry logic)
       await connectReal(tokenResponse.access_token)
     } catch (error) {
       console.error("[AccountSwitcher] OAuth callback failed:", error)
-      setError(error instanceof Error ? error.message : "OAuth authentication failed")
+      const errorMessage = error instanceof Error ? error.message : "OAuth authentication failed"
+      
+      // Provide user-friendly error messages
+      if (errorMessage.includes("timeout")) {
+        setError("Connection timeout. Please check your internet and try again.")
+      } else if (errorMessage.includes("Authentication failed after")) {
+        setError("Unable to connect to your Deriv account. Please try again or contact support.")
+      } else {
+        setError(errorMessage)
+      }
     }
   }, [connectReal])
 

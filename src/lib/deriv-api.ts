@@ -619,12 +619,13 @@ class DerivAPI {
         req_id: reqId,
       })
 
+      // Increased timeout to 30 seconds for OAuth authentication
       setTimeout(() => {
         if (this.pendingRequests.has(reqId)) {
           this.pendingRequests.delete(reqId)
-          reject(new Error("Request timeout"))
+          reject(new Error("Authorization timeout - please try again"))
         }
-      }, 15000)
+      }, 30000)
     })
   }
 

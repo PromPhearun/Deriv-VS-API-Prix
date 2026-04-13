@@ -59,6 +59,24 @@ export function AccountProvider({ children }: AccountProviderProps) {
 
   const balanceHandlerRef = useRef<((data: any) => void) | null>(null)
   const authorizeHandlerRef = useRef<((data: any) => void) | null>(null)
+  const isAuthenticatingRef = useRef<boolean>(false)
+  const authRetryCountRef = useRef<number>(0)
+  const MAX_AUTH_RETRIES = 3
+
+  const disconnect = useCallback(() => {
+    // Switch back to demo
+    localStorage.setItem("account_type", "demo")
+    localStorage.removeItem("deriv_access_token")
+    setAccountInfo({
+      accountType: "demo",
+      balance: DEMO_BALANCE,
+      currency: DEMO_CURRENCY,
+      loginId: DEMO_LOGIN_ID,
+      isConnected: false,
+      isConnecting: false,
+      accessToken: null,
+    })
+  }, [])
 
   const handleBalanceUpdate = useCallback((data: any) => {
     if (data?.balance?.balance !== undefined) {
@@ -83,6 +101,13 @@ export function AccountProvider({ children }: AccountProviderProps) {
   }, [])
 
   const connectReal = useCallback(async (accessToken: string) => {
+    // Prevent duplicate authentication attempts (race condition fix)
+    if (isAuthenticatingRef.current) {
+      console.log("[AccountContext] Authentication already in progress, skipping duplicate request")
+      return
+    }
+    
+    isAuthenticatingRef.current = true
     console.log("[AccountContext] Connecting real account with OAuth...")
     
     // Store access token
@@ -94,57 +119,80 @@ export function AccountProvider({ children }: AccountProviderProps) {
       isConnecting: true,
     }))
 
-    try {
-      const api = getDerivAPI()
-      
-      // Step 1: Connect WebSocket
-      console.log("[AccountContext] Connecting WebSocket...")
-      await api.initialize()
-      
-      // Step 2: Authenticate with token
-      console.log("[AccountContext] Authenticating with token...")
-      const authResponse = await api.authorize(accessToken)
-      console.log("[AccountContext] Authentication successful:", authResponse)
-      
-      const accountBalance = authResponse.balance || 0
-      const accountCurrency = authResponse.currency || "USD"
-      const accountId = authResponse.loginid
-      
-      // Update state with connected account info
-      setAccountInfo((prev) => ({
-        ...prev,
-        balance: accountBalance,
-        currency: accountCurrency,
-        loginId: accountId,
-        isConnected: true,
-        isConnecting: false,
-      }))
-      
-    } catch (error) {
-      console.error("[AccountContext] Failed to connect real account:", error)
-      setAccountInfo((prev) => ({
-        ...prev,
-        isConnecting: false,
-        isConnected: false,
-      }))
-      throw error
+    // Retry logic with exponential backoff
+    let lastError: Error | null = null
+    
+    for (let attempt = 1; attempt <= MAX_AUTH_RETRIES; attempt++) {
+      try {
+        const api = getDerivAPI()
+        
+        // Step 1: Connect WebSocket
+        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Connecting WebSocket...`)
+        await api.initialize()
+        
+        // Step 2: Authenticate with token (now has 30-second timeout)
+        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Authenticating with token...`)
+        const authResponse = await api.authorize(accessToken)
+        console.log("[AccountContext] Authentication successful:", authResponse)
+        
+        const accountBalance = authResponse.balance || 0
+        const accountCurrency = authResponse.currency || "USD"
+        const accountId = authResponse.loginid
+        
+        // Update state with connected account info
+        setAccountInfo((prev) => ({
+          ...prev,
+          balance: accountBalance,
+          currency: accountCurrency,
+          loginId: accountId,
+          isConnected: true,
+          isConnecting: false,
+        }))
+        
+        // Reset retry counter on success
+        authRetryCountRef.current = 0
+        isAuthenticatingRef.current = false
+        return
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.error(`[AccountContext] Authentication attempt ${attempt}/${MAX_AUTH_RETRIES} failed:`, error)
+        
+        // If this was the last attempt, give up
+        if (attempt === MAX_AUTH_RETRIES) {
+          console.error("[AccountContext] All authentication attempts failed, falling back to demo")
+          
+          // Clear stored token to prevent infinite retry loops
+          localStorage.removeItem("deriv_access_token")
+          
+          setAccountInfo((prev) => ({
+            ...prev,
+            isConnecting: false,
+            isConnected: false,
+          }))
+          
+          isAuthenticatingRef.current = false
+          authRetryCountRef.current = 0
+          
+          // Fallback to demo mode after max retries
+          setTimeout(() => {
+            disconnect()
+          }, 1000)
+          
+          throw new Error(`Authentication failed after ${MAX_AUTH_RETRIES} attempts: ${lastError.message}`)
+        }
+        
+        // Exponential backoff: 2s, 4s, 8s
+        const delay = 2000 * Math.pow(2, attempt - 1)
+        console.log(`[AccountContext] Retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
     }
-  }, [])
-
-  const disconnect = useCallback(() => {
-    // Switch back to demo
-    localStorage.setItem("account_type", "demo")
-    localStorage.removeItem("deriv_access_token")
-    setAccountInfo({
-      accountType: "demo",
-      balance: DEMO_BALANCE,
-      currency: DEMO_CURRENCY,
-      loginId: DEMO_LOGIN_ID,
-      isConnected: false,
-      isConnecting: false,
-      accessToken: null,
-    })
-  }, [])
+    
+    // This should never be reached, but just in case
+    isAuthenticatingRef.current = false
+    throw lastError || new Error("Authentication failed")
+  }, [disconnect])
 
   // Set up event handlers for real account
   useEffect(() => {
