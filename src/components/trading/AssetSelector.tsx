@@ -172,9 +172,9 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className, disabled }) =>
           disabled={disabled}
           className={cn(
             "w-full flex items-center justify-between px-3 h-9 rounded-md transition-all duration-200 shadow-sm",
-            "bg-white hover:bg-yellow-50 border-2 border-[#FFD700]",
+            "bg-white dark:bg-slate-800 hover:bg-yellow-50 dark:hover:bg-slate-700 border-2 border-[#FFD700] dark:border-yellow-600/50",
             "focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2",
-            disabled && "opacity-50 cursor-not-allowed hover:bg-white"
+            disabled && "opacity-50 cursor-not-allowed hover:bg-white dark:hover:bg-slate-800"
           )}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
@@ -183,7 +183,7 @@ const AssetSelector: React.FC<AssetSelectorProps> = ({ className, disabled }) =>
             <span className="text-lg flex-shrink-0" role="img" aria-label={currentSymbolData?.market_display_name}>
               {marketIcons[currentSymbolData?.market_display_name || ""] || "📊"}
             </span>
-            <span className="font-bold text-sm truncate text-sky-950">
+            <span className="font-bold text-sm truncate text-sky-950 dark:text-slate-200">
               {currentSymbolData?.display_name || currentSymbol}
             </span>
           </div>

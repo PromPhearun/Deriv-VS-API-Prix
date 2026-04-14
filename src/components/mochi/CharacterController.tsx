@@ -31,11 +31,11 @@ const getCharacterImage = (isLead: boolean, emotion: MascotEmotion, raceState: s
     // Moto
     switch (emotion) {
       case "win":
-        return encodeURI("/characters/Dudu Dancing.gif")
+        return encodeURI("/Mochi Moto/Moto Win.png")
       case "lose":
-        return encodeURI("/characters/Dudu Twist Bubu.gif")
+        return encodeURI("/Mochi Moto/Moto Lose.png")
       default:
-        return raceState === "racing" ? encodeURI("/characters/Dudu walking.gif") : encodeURI("/characters/Dudu walking.gif")
+        return encodeURI("/Mochi Moto/Moto Racing.png")
     }
   }
 }
@@ -428,10 +428,10 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
   const isMotoLeading = priceChange < 0
 
   // Add smooth overtaking animations via x offset
-  const MOTO_LEAD_X = 60
-  const MOTO_LAG_X = -60
-  const MOCHI_LEAD_X = 60
-  const MOCHI_LAG_X = -60
+  const MOTO_LEAD_X = 80
+  const MOTO_LAG_X = -80
+  const MOCHI_LEAD_X = 80
+  const MOCHI_LAG_X = -80
 
   // We play a whoosh sound when the leader changes
   const prevMotoLeading = useRef(isMotoLeading)
@@ -589,7 +589,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         }}
       >
         <div
-          className="relative w-28 h-28 md:w-36 md:h-36"
+          className="relative w-36 h-36 md:w-48 md:h-48"
         >
           <CharacterImage
             src={getCharacterImage(false, motoEmotion, raceState)}
@@ -666,33 +666,6 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         </motion.div>
       )}
 
-      {/* Victory pose overlay */}
-      {raceState === "finished" && (
-        <motion.div
-          className="absolute -top-16 z-50"
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ 
-            scale: 1, 
-            rotate: 0,
-            x: emotion === "win" ? MOTO_LEAD_X - 40 : MOCHI_LEAD_X - 40,
-          }}
-          transition={{ type: "spring", stiffness: 200 }}
-        >
-          {USE_ORIGINAL_CHARACTERS ? (
-            emotion === "win" && (
-              <img
-                src="/characters/Bubu Dudu hugging.jpg"
-                alt="Victory!"
-                className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg"
-              />
-            )
-          ) : (
-            <div className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg bg-white flex items-center justify-center text-3xl overflow-hidden">
-              <span className="animate-bounce">🏆</span>
-            </div>
-          )}
-        </motion.div>
-      )}
     </div>
   )
 }
