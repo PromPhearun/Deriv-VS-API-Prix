@@ -7,6 +7,7 @@ A high-performance, deployable trading web application built using the Deriv API
 - **Real-time Tick Streaming**: Live price updates via WebSocket
 - **Interactive Charts**: Candlestick charts with Lightweight Charts (TradingView)
 - **One-Click Trading**: RISE/FALL buttons for quick trades
+- **Virtual Matching Engine**: Local simulation engine for realistic demo trading and mini-games without hitting the production API
 - **Strategy Builder**: Create automated trading strategies with compound conditions
 - **Dark Mode**: Modern FinTech aesthetic with dark theme
 - **Mobile Responsive**: Fat-finger friendly design for mobile traders

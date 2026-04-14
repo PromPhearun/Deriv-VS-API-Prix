@@ -982,22 +982,37 @@ const simulateDemoTrade = useCallback((contractType: ContractType): Promise<void
     const tradeDuration = durationUnit === 't' ? 1000 : parseInt(duration) * 1000
     const maxDuration = Math.min(tradeDuration, 5000) // Cap at 5 seconds
     
-    setTimeout(() => {
-      const won = Math.random() > 0.5 // 50/50 win chance
-      
-      if (won) {
-        updateBalance(accountBalance + (payout - tradeAmount))
-      } else {
-        updateBalance(accountBalance - tradeAmount)
-      }
-      
-      setProposal(null)
-      resolve()
-    }, maxDuration)
-  })
-}, [...])
-```
+      setTimeout(() => {
+        const won = Math.random() > 0.5 // 50/50 win chance
+        
+        if (won) {
+          updateBalance(accountBalance + (payout - tradeAmount))
+        } else {
+          updateBalance(accountBalance - tradeAmount)
+        }
+        
+        setProposal(null)
+        resolve()
+      }, maxDuration)
+    })
+  }, [...])
+  ```
 
+### Virtual Matching Engine (April 5, 2026)
+
+**Problem:** For the Demo account mode and mini-games (Mochi Moto, Surf The Waves), we needed a way to simulate Deriv contract results (Rise/Fall, Higher/Lower, Touch/No Touch) without hitting the production API. A simple random win/loss generator wasn't realistic enough.
+
+**Solution: Implemented a Local "Virtual Matching Engine"**
+
+1. **Architecture**: Created a local simulation engine that evaluates contract conditions against real-time WebSocket ticks.
+2. **Tick Processing**: The engine receives real-time ticks from the active symbol subscription.
+3. **Contract Evaluation**: 
+   - **Rise/Fall**: Compares the entry spot price with the exit spot price at the end of the duration.
+   - **Higher/Lower**: Compares the exit spot price against the dynamically set barrier offset.
+   - **Touch/No Touch**: Continuously evaluates every incoming tick during the contract duration against the barrier. If the barrier is touched, the contract resolves immediately.
+4. **Result Resolution**: Once the conditions are met or the duration expires, the engine calculates the payout and updates the virtual demo balance.
+
+**Result:** A highly realistic, local trading simulator that exactly mimics the Deriv production matching engine behavior using live market data, all without executing real API trades or requiring a real money account.
 **Files Modified:**
 - `src/contexts/AccountContext.tsx` — **NEW** account management context
 - `src/components/account/AccountSwitcher.tsx` — **NEW** demo/real toggle UI
