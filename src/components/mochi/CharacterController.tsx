@@ -205,8 +205,8 @@ const CharacterImage: React.FC<{
 
   if (hasError) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        {isLead ? <BubuPlaceholder /> : <DuduPlaceholder />}
+      <div className="w-full h-full flex items-center justify-center bg-transparent">
+        {/* No placeholder to prevent flashing old characters */}
       </div>
     )
   }
@@ -214,16 +214,14 @@ const CharacterImage: React.FC<{
   return (
     <>
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-pulse">
-            {isLead ? <BubuPlaceholder /> : <DuduPlaceholder />}
-          </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-transparent">
+          {/* No placeholder to prevent flashing old characters */}
         </div>
       )}
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-contain drop-shadow-xl"
+        className={`w-full h-full object-contain drop-shadow-xl ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
         style={{ mixBlendMode: "multiply" }}
         onLoad={() => setIsLoading(false)}
         onError={() => {
