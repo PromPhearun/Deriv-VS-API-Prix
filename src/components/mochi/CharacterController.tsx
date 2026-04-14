@@ -439,7 +439,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           top: mochiY > 0 ? `${mochiY}px` : "65%",
           transform: `translateX(-50%) translateY(calc(-85% + ${jumpY}px))`,
           zIndex: isMochiLeading ? 30 : 10,
-          transition: "top 0.1s ease-out",
+          transition: "left 0.5s ease-out",
         }}
       >
         <motion.div
@@ -532,7 +532,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           transform: `translateX(-50%) translateY(calc(-85% + ${jumpY}px))`,
           opacity: 0.9,
           zIndex: isMotoLeading ? 30 : 10,
-          transition: "top 0.1s ease-out",
+          transition: "left 0.5s ease-out",
         }}
       >
         <motion.div
@@ -614,7 +614,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
             color: "#8B5E3C",
             border: `2px solid ${isMochiLeading ? "#7CB876" : "#FF4B4B"}`,
             fontFamily: "'Quicksand', sans-serif",
-            transition: "top 0.1s ease-out, left 0.5s ease-out",
+            transition: "left 0.5s ease-out",
           }}
           animate={{
             scale: [1, 1.05, 1],
