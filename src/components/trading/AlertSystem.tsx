@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 // Simple indicator evaluation logic hook
 function useAlertEvaluator() {
   const { currentTick, currentSymbol } = useTradingStore();
-  const { priceAlerts, settings, removePriceAlert } = useAlertStore();
+  const { priceAlerts, removePriceAlert } = useAlertStore();
   const lastEvaluatedTickRef = useRef<number | null>(null);
 
   useEffect(() => {
