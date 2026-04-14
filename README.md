@@ -1,4 +1,4 @@
-# PROMO Trade
+# PROMO Trade - API-Prix-2026
 
 A high-performance, deployable trading web application built using the Deriv API V2.
 
@@ -31,10 +31,10 @@ A high-performance, deployable trading web application built using the Deriv API
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/promo-trade.git
+git clone https://github.com/prom-deriv/API-Prix-2026.git
 
 # Navigate to project directory
-cd promo-trade
+cd API-Prix-2026
 
 # Install dependencies
 npm install
