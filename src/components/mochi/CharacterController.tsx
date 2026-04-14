@@ -4,7 +4,7 @@ import type { MascotEmotion } from "../../contexts/GhostContext"
 import { getSoundManager } from "../../utils/soundManager"
 
 // TOGGLE THIS TO TRUE TO REVERT TO BUBU AND DUDU IMAGES
-const USE_ORIGINAL_CHARACTERS = false;
+const USE_ORIGINAL_CHARACTERS = true;
 
 interface CharacterControllerProps {
   emotion: MascotEmotion
@@ -18,17 +18,17 @@ interface CharacterControllerProps {
 // Character sprite URLs using local images
 const getCharacterImage = (isLead: boolean, emotion: MascotEmotion, raceState: string) => {
   if (isLead) {
-    // Bubu (Panda)
+    // Mochi
     switch (emotion) {
       case "win":
-        return encodeURI("/characters/bubu kiss dudu.gif")
+        return encodeURI("/Mochi Moto/Mochi Win.png")
       case "lose":
-        return encodeURI("/characters/Bubu turn around.gif")
+        return encodeURI("/Mochi Moto/Mochi Lose.png")
       default:
-        return raceState === "racing" ? encodeURI("/characters/Bubu Dudu runing.gif") : encodeURI("/characters/Bubu-and-Dudu.png")
+        return encodeURI("/Mochi Moto/Mochi Racing.png")
     }
   } else {
-    // Dudu (Bunny)
+    // Moto
     switch (emotion) {
       case "win":
         return encodeURI("/characters/Dudu Dancing.gif")
@@ -502,11 +502,11 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         }}
       >
         <div
-          className="relative w-28 h-28 md:w-36 md:h-36"
+          className="relative w-36 h-36 md:w-48 md:h-48"
         >
           <CharacterImage
             src={getCharacterImage(true, mochiEmotion, raceState)}
-            alt={USE_ORIGINAL_CHARACTERS ? "Bubu the Panda" : "Mochi Racer"}
+            alt="Mochi Racer"
             isLead={true}
             emotion={mochiEmotion}
             raceState={raceState}
@@ -529,7 +529,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           }}
           transition={{ duration: 0.5, repeat: mochiEmotion === "win" ? Infinity : 0 }}
         >
-          {USE_ORIGINAL_CHARACTERS ? "Bubu" : "Mochi"} {isMochiLeading ? "🏎️" : "🚗"}
+          Mochi {isMochiLeading ? "🏎️" : "🚗"}
         </motion.div>
 
         {/* Speed lines when racing */}
@@ -593,7 +593,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
         >
           <CharacterImage
             src={getCharacterImage(false, motoEmotion, raceState)}
-            alt={USE_ORIGINAL_CHARACTERS ? "Dudu the Bunny" : "Moto Racer"}
+            alt="Moto Racer"
             isLead={false}
             emotion={motoEmotion}
             raceState={raceState}
@@ -616,7 +616,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           }}
           transition={{ duration: 0.5, repeat: motoEmotion === "win" ? Infinity : 0 }}
         >
-          {USE_ORIGINAL_CHARACTERS ? "Dudu" : "Moto"} {isMotoLeading ? "🏎️" : "🚗"}
+          Moto {isMotoLeading ? "🏎️" : "🚗"}
         </motion.div>
 
         {/* Speed lines when racing */}
