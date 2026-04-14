@@ -323,6 +323,68 @@ class SoundManager {
   }
 
   /**
+   * Play peaceful ambient sound (continuous loop)
+   */
+  playPeacefulAmbient(): (() => void) | null {
+    if (!this.ensureContext() || !this.isEnabled) return null
+
+    try {
+      const ctx = this.audioContext!
+      const ambientGain = ctx.createGain()
+      ambientGain.gain.value = 0.001
+      ambientGain.connect(this.masterGain!)
+      
+      // Gentle fade in
+      ambientGain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 2)
+
+      // C Major 7 chord frequencies (C, E, G, B) down an octave
+      const frequencies = [130.81, 164.81, 196.00, 246.94]
+      const oscillators: OscillatorNode[] = []
+
+      frequencies.forEach(freq => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        
+        gain.gain.value = 0.25 // Soft volume per note
+
+        osc.connect(gain)
+        gain.connect(ambientGain)
+        
+        osc.start()
+        oscillators.push(osc)
+        
+        // Add gentle chorus effect with LFO
+        const lfo = ctx.createOscillator()
+        const lfoGain = ctx.createGain()
+        lfo.frequency.value = 0.1 + (Math.random() * 0.2)
+        lfoGain.gain.value = 2
+        lfo.connect(lfoGain)
+        lfoGain.connect(osc.frequency)
+        lfo.start()
+        oscillators.push(lfo)
+      })
+
+      return () => {
+        try {
+          ambientGain.gain.cancelScheduledValues(ctx.currentTime)
+          ambientGain.gain.setValueAtTime(ambientGain.gain.value, ctx.currentTime)
+          ambientGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1)
+          setTimeout(() => {
+            oscillators.forEach(osc => osc.stop())
+            ambientGain.disconnect()
+          }, 1000)
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.warn("[SoundManager] Failed to play peaceful ambient sound:", err)
+      return null
+    }
+  }
+
+  /**
    * Play engine revving sound for racing
    */
   playEngineRev() {

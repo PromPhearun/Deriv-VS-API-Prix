@@ -49,19 +49,53 @@ const ParallaxBackground: React.FC<ParallaxBackgroundProps> = ({ scrollOffset })
         }}
       />
 
-      {/* Sun */}
-      <motion.div
-        className="absolute top-8 right-16 w-24 h-24 rounded-full"
-        style={{
-          background: "radial-gradient(circle, #FFE5B4 0%, #FFD700 50%, #FFA500 100%)",
-          boxShadow: "0 0 60px rgba(255, 215, 0, 0.6)",
-        }}
-        animate={{
-          scale: [1, 1.05, 1],
-          opacity: [0.9, 1, 0.9],
-        }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* Sun and Rays */}
+      <div className="absolute top-8 right-16 w-24 h-24">
+        {/* Rays */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        >
+          {Array.from({ length: 12 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                width: 4,
+                height: 120,
+                background: "linear-gradient(to top, transparent, #FFA500, #FFD700, transparent)",
+                transform: `rotate(${i * 30}deg)`,
+              }}
+              animate={{
+                opacity: [0.3, 0.7, 0.3],
+                scaleY: [0.8, 1.2, 0.8],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.1,
+              }}
+            />
+          ))}
+        </motion.div>
+
+        {/* Sun Core */}
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: "radial-gradient(circle, #FFE5B4 0%, #FFD700 50%, #FFA500 100%)",
+            boxShadow: "0 0 60px rgba(255, 215, 0, 0.6)",
+            zIndex: 1,
+          }}
+          animate={{
+            scale: [1, 1.05, 1],
+            opacity: [0.9, 1, 0.9],
+          }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
 
       {/* Background Layer - Mountains (slowest) */}
       <div

@@ -5,6 +5,7 @@ import TradingChart from "../components/charts/TradingChart"
 import TradingPanel from "../components/trading/TradingPanel"
 import TradeHistory from "../components/trading/TradeHistory"
 import ActiveContractsPanel from "../components/trading/ActiveContractsPanel"
+import AlertSystem from "../components/trading/AlertSystem"
 import SocialTrading from "../components/social/SocialTrading"
 import AccountSnapshot from "../components/account/AccountSnapshot"
 import AccountSwitcher from "../components/account/AccountSwitcher"
@@ -532,6 +533,7 @@ function Home() {
               <DerivPoints />
             </div>
 
+             <AlertSystem />
              <SocialTrading />
              <TradeHistory />
           </div>

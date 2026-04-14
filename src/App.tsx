@@ -4,11 +4,13 @@ import MochiMoto from './pages/MochiMoto'
 import SurfTheWaves from './pages/SurfTheWaves'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AccountProvider } from './contexts/AccountContext'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
     <ThemeProvider>
       <AccountProvider>
+        <Toaster position="top-center" />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mochi-moto" element={<MochiMoto />} />

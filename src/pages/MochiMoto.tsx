@@ -49,6 +49,7 @@ function MochiMotoContent() {
   const getRoadYRef = useRef<((x: number) => number) | null>(null)
   
   const stopDrivingSoundRef = useRef<(() => void) | null>(null)
+  const stopAmbientSoundRef = useRef<(() => void) | null>(null)
 
   // Calculate slope from recent ticks
   const calculateSlope = useCallback((ticks: typeof tickHistory) => {
@@ -161,6 +162,29 @@ function MochiMotoContent() {
       getDerivAPI().disconnect() 
     }
   }, [])
+
+  // Manage peaceful ambient sound based on race state
+  useEffect(() => {
+    const sm = getSoundManager()
+    
+    if (raceState === "idle" || raceState === "finished") {
+      if (!stopAmbientSoundRef.current) {
+        stopAmbientSoundRef.current = sm.playPeacefulAmbient()
+      }
+    } else {
+      if (stopAmbientSoundRef.current) {
+        stopAmbientSoundRef.current()
+        stopAmbientSoundRef.current = null
+      }
+    }
+    
+    return () => {
+      if (stopAmbientSoundRef.current) {
+        stopAmbientSoundRef.current()
+        stopAmbientSoundRef.current = null
+      }
+    }
+  }, [raceState])
 
   // Update race state based on active trade
   useEffect(() => {
