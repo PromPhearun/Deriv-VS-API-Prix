@@ -9,6 +9,14 @@
     <link rel="preconnect" href="https://media.tenor.com" crossorigin />
     <!-- DNS prefetch as fallback -->
     <link rel="dns-prefetch" href="https://media.tenor.com" />
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme') || 'dark';
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

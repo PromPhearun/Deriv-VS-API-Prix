@@ -108,7 +108,7 @@ export default function SurferCharacter({ state, tickHistory, priceChange, scrol
         // Transition vertical position incredibly smoothly, tracking the canvas pixels
         top: `${verticalPos}px`,
         // Anchor the exact bottom center of the board to the line
-        transform: `translate(-50%, -100%) rotate(${rotation}deg) translateY(${Math.sin(animationFrame) * 5}px)`,
+        transform: `translate(-50%, -85%) rotate(${rotation}deg) translateY(${Math.sin(animationFrame) * 5}px)`,
         zIndex: 20,
         // Slower transition for vertical pos so it glides along the wave instead of snapping rigidly
         transition: "top 0.1s linear, transform 0.2s ease-out"
@@ -119,7 +119,7 @@ export default function SurferCharacter({ state, tickHistory, priceChange, scrol
         <img 
           src="/Surf Waves/Robot Surfing.png" 
           alt="Robot Surfer" 
-          className="w-32 h-32 md:w-48 md:h-48 object-contain"
+          className="w-40 h-40 md:w-64 md:h-64 object-contain"
           style={{ 
             filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.4))",
             // Flip the robot if it's doing a trick, making it look wilder
