@@ -3,8 +3,7 @@ import { useTradingStore } from "../../stores/tradingStore"
 import { Card } from "../ui/card"
 import { Button } from "../ui/button"
 import { getDerivAPI } from "../../lib/deriv-api"
-import { TrendingUp, TrendingDown, Settings, X, DollarSign, Clock } from "lucide-react"
-import StopLossTakeProfitModal from "./StopLossTakeProfitModal"
+import { TrendingUp, TrendingDown, X, DollarSign, Clock } from "lucide-react"
 
 const formatTimeLeft = (expiry: number) => {
   const now = Math.floor(Date.now() / 1000)
@@ -20,11 +19,8 @@ const formatTimeLeft = (expiry: number) => {
 export default function ActiveContractsPanel() {
   const activeContracts = useTradingStore((state) => state.activeContracts)
   const removeActiveContract = useTradingStore((state) => state.removeActiveContract)
-  const getContractSLTP = useTradingStore((state) => state.getContractSLTP)
   const addRecentTrade = useTradingStore((state) => state.addRecentTrade)
   
-  const [selectedContractId, setSelectedContractId] = useState<number | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [sellLoading, setSellLoading] = useState<number | null>(null)
 
   const handleSellContract = async (contractId: number, sellPrice: number) => {
@@ -66,16 +62,6 @@ export default function ActiveContractsPanel() {
     }
   }
 
-  const handleOpenSLTPModal = (contractId: number) => {
-    setSelectedContractId(contractId)
-    setIsModalOpen(true)
-  }
-
-  const handleCloseSLTPModal = () => {
-    setSelectedContractId(null)
-    setIsModalOpen(false)
-  }
-
   if (activeContracts.length === 0) {
     return (
       <Card className="p-6 h-full flex flex-col justify-center items-center">
@@ -99,7 +85,6 @@ export default function ActiveContractsPanel() {
 
         <div className="space-y-3">
           {activeContracts.map((contract) => {
-            const sltp = getContractSLTP(contract.contract_id)
             const isProfitable = contract.profit > 0
             const profitPercentage = ((contract.profit / contract.buy_price) * 100).toFixed(2)
             const isExpired = contract.is_expired === 1
@@ -196,51 +181,8 @@ export default function ActiveContractsPanel() {
                   </span>
                 </div>
 
-                {/* SL/TP Visual Indicator */}
-                {(sltp?.stopLoss || sltp?.takeProfit) && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>SL: ${sltp.stopLoss?.toFixed(2) || "N/A"}</span>
-                      <span>Current: ${contract.bid_price.toFixed(2)}</span>
-                      <span>TP: ${sltp.takeProfit?.toFixed(2) || "N/A"}</span>
-                    </div>
-                    {/* Progress Bar */}
-                    <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden border border-amber-500/20">
-                      <div
-                        className={`absolute h-full ${
-                          isProfitable ? "bg-profit" : "bg-loss"
-                        }`}
-                        style={{
-                          width: sltp.stopLoss && sltp.takeProfit
-                            ? `${Math.min(
-                                100,
-                                Math.max(
-                                  0,
-                                  ((contract.bid_price - sltp.stopLoss) /
-                                    (sltp.takeProfit - sltp.stopLoss)) *
-                                    100
-                                )
-                              )}%`
-                            : "50%",
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => handleOpenSLTPModal(contract.contract_id)}
-                    disabled={isExpired || isSold}
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    {sltp?.stopLoss || sltp?.takeProfit ? "Edit" : "Set"} SL/TP
-                  </Button>
-
                   <Button
                     size="sm"
                     variant="destructive"
@@ -263,16 +205,6 @@ export default function ActiveContractsPanel() {
           })}
         </div>
       </Card>
-
-      {/* SL/TP Modal */}
-      {selectedContractId && (
-        <StopLossTakeProfitModal
-          isOpen={isModalOpen}
-          onClose={handleCloseSLTPModal}
-          contractId={selectedContractId}
-          contract={activeContracts.find((c) => c.contract_id === selectedContractId)!}
-        />
-      )}
     </>
   )
 }

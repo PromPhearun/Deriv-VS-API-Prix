@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
+import { motion, useAnimationFrame, useMotionValue, useSpring } from "framer-motion"
+import { Bike } from "lucide-react"
 import type { MascotEmotion } from "../../contexts/GhostContext"
 import { getSoundManager } from "../../utils/soundManager"
 
@@ -427,22 +428,17 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
       {/* Mochi (Red) */}
       <motion.div
         className="absolute bottom-0"
-        animate={{
-          x: isMochiLeading ? MOCHI_LEAD_X : MOCHI_LAG_X,
+        style={{
           rotate: isMochiLeading ? rotation : rotation * 0.5,
-          scaleX: isMochiLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
-          scaleY: isMochiLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
+          transformOrigin: "center bottom",
           zIndex: isMochiLeading ? 30 : 10,
         }}
-        transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 20,
-          mass: 0.8,
+        animate={{
+          x: isMochiLeading ? MOCHI_LEAD_X : MOCHI_LAG_X,
+          scaleX: isMochiLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
+          scaleY: isMochiLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
         }}
-        style={{
-          transformOrigin: "center bottom",
-        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         <div
           className="relative w-36 h-36 md:w-48 md:h-48"
@@ -473,9 +469,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           transition={{ duration: 0.5, repeat: mochiEmotion === "win" ? Infinity : 0 }}
         >
           <span>Mochi</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#004d00">
-            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3H5.78l1.07-3zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-          </svg>
+          <Bike size={14} strokeWidth={2.5} color="#004d00" />
         </motion.div>
 
         {/* Speed lines when racing */}
@@ -516,23 +510,18 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
       {/* Moto (Blue) */}
       <motion.div
         className="absolute bottom-0"
-        animate={{
-          x: isMotoLeading ? MOTO_LEAD_X : MOTO_LAG_X,
-          rotate: isMotoLeading ? rotation : rotation * 0.5,
-          scaleX: isMotoLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
-          scaleY: isMotoLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
-          zIndex: isMotoLeading ? 30 : 10,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 20,
-          mass: 0.8,
-        }}
         style={{
+          rotate: isMotoLeading ? rotation : rotation * 0.5,
           transformOrigin: "center bottom",
           opacity: 0.9,
+          zIndex: isMotoLeading ? 30 : 10,
         }}
+        animate={{
+          x: isMotoLeading ? MOTO_LEAD_X : MOTO_LAG_X,
+          scaleX: isMotoLeading ? squashStretch.scaleX : squashStretch.scaleX * 0.95,
+          scaleY: isMotoLeading ? squashStretch.scaleY : squashStretch.scaleY * 0.95,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         <div
           className="relative w-36 h-36 md:w-48 md:h-48"
@@ -549,7 +538,7 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
 
         {/* Character label */}
         <motion.div
-          className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+          className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap flex items-center justify-center gap-1"
           style={{
             backgroundColor: USE_ORIGINAL_CHARACTERS ? "#FFB8D0" : "#FF4B4B",
             color: "#FFFFFF",
@@ -562,7 +551,8 @@ const CharacterController: React.FC<CharacterControllerProps> = ({
           }}
           transition={{ duration: 0.5, repeat: motoEmotion === "win" ? Infinity : 0 }}
         >
-          Moto {isMotoLeading ? "🏎️" : "🚗"}
+          <span>Moto</span>
+          <Bike size={14} strokeWidth={2.5} color={USE_ORIGINAL_CHARACTERS ? "#C2185B" : "#8B0000"} />
         </motion.div>
 
         {/* Speed lines when racing */}
