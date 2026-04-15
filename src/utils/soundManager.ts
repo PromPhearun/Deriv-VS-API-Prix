@@ -62,45 +62,32 @@ class SoundManager {
 
     try {
       const ctx = this.audioContext!
-      const oscillator = ctx.createOscillator()
+      const audio = new Audio('/Surf Waves/Wave sound.mp3')
+      audio.loop = true
+      
+      const source = ctx.createMediaElementSource(audio)
       const gain = ctx.createGain()
-      const filter = ctx.createBiquadFilter()
-
-      // Create a low-frequency oscillator for wave-like sound
-      oscillator.type = 'sine'
-      oscillator.frequency.value = 80 // Low rumble
-
-      filter.type = 'lowpass'
-      filter.frequency.value = 300
-      filter.Q.value = 1
-
+      
       // Subtle volume for ambient sound
       gain.gain.value = 0.5
 
-      oscillator.connect(filter)
-      filter.connect(gain)
+      source.connect(gain)
       gain.connect(this.masterGain!)
 
-      oscillator.start()
-
-      // Add subtle LFO (Low Frequency Oscillator) for wave motion
-      const lfo = ctx.createOscillator()
-      const lfoGain = ctx.createGain()
-      lfo.frequency.value = 0.2 // Slow wave motion
-      lfoGain.gain.value = 20
-      lfo.connect(lfoGain)
-      lfoGain.connect(oscillator.frequency)
-      lfo.start()
-
-      console.log("[SoundManager] Ocean ambient started successfully")
+      audio.play().then(() => {
+        console.log("[SoundManager] Ocean ambient started successfully")
+      }).catch(err => {
+        console.warn("[SoundManager] Autoplay prevented for ocean ambient:", err)
+      })
 
       // Return cleanup function
       return () => {
         try {
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
           setTimeout(() => {
-            oscillator.stop()
-            lfo.stop()
+            audio.pause()
+            audio.currentTime = 0
+            source.disconnect()
             console.log("[SoundManager] Ocean ambient stopped")
           }, 500)
         } catch (e) {
