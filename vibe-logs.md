@@ -1045,6 +1045,19 @@ const simulateDemoTrade = useCallback((contractType: ContractType): Promise<void
   }, [...])
   ```
 
+### Ocean Ambient Sound Update (April 15, 2026)
+
+**Problem:** The ocean wave ambient sound in the "Surf the Waves" game was procedurally generated using the Web Audio API, which didn't provide the high-quality realistic sound desired.
+
+**Solution: Replaced procedural audio with MP3 file**
+
+1. **Updated SoundManager**: Modified `playOceanAmbient` in `src/utils/soundManager.ts` to use an `HTMLAudioElement` pointing to the `/Surf Waves/Wave sound.mp3` file instead of creating oscillators.
+2. **Web Audio Integration**: Connected the audio element's source to the existing Web Audio API graph using `createMediaElementSource` to ensure it routes through the `masterGain` node, preserving volume controls and mute functionality.
+3. **Looping & Cleanup**: Configured the audio element to loop infinitely (`audio.loop = true`) and implemented proper cleanup (pausing, resetting time, and disconnecting) when the sound stops.
+4. **Resilience**: Handled autoplay promises and caught potential autoplay rejection errors cleanly without crashing.
+
+**Result:** A more realistic, high-quality ocean ambient sound that loops perfectly and respects the game's volume settings.
+
 ### Virtual Matching Engine (April 5, 2026)
 
 **Problem:** For the Demo account mode and mini-games (Mochi Moto, Surf The Waves), we needed a way to simulate Deriv contract results (Rise/Fall, Higher/Lower, Touch/No Touch) without hitting the production API. A simple random win/loss generator wasn't realistic enough.
