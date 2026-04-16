@@ -26,10 +26,10 @@ import type {
   CashierResponse,
 } from "../types/deriv"
 
-// Deriv API WebSocket endpoint
-// Uses standard websocket endpoint to get ALL active symbols (forex, commodities, indices, crypto, etc.)
+// Deriv API V2 WebSocket endpoint
+// Uses the new Deriv Trading API v2 public endpoint for all market data and trading
 const APP_ID = import.meta.env.VITE_DERIV_APP_ID || "1089"
-const WS_PUBLIC_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`
+const WS_PUBLIC_URL = `wss://api.derivws.com/trading/v1/options/ws/public`
 
 type MessageHandler = (data: DerivMessage) => void
 
@@ -418,7 +418,45 @@ class DerivAPI {
       return
     }
 
-    // Handle pending requests
+    // Handle error responses FIRST - before resolving pending requests
+    // This ensures API errors properly reject promises instead of resolving them with error data
+    if ("error" in data) {
+      const error = data.error as any
+      const errorMessage = error?.message || error?.code || JSON.stringify(error)
+
+      // ✅ GRACEFULLY HANDLE "AlreadySubscribed" ERRORS (common during React Strict Mode)
+      if (errorMessage.includes("already subscribed") || errorMessage.includes("AlreadySubscribed")) {
+        if ("echo_req" in data && data.echo_req) {
+          const reqId = (data.echo_req as any).req_id
+          if (reqId && this.pendingRequests.has(reqId)) {
+            const { resolve } = this.pendingRequests.get(reqId)!
+            this.pendingRequests.delete(reqId)
+            resolve({
+              echo_req: data.echo_req,
+              subscription: { id: "existing" },
+              msg_type: (data.echo_req as any).ticks ? "tick" : "ohlc"
+            })
+          }
+        }
+        return
+      }
+
+      console.error("[DerivAPI] API Error:", errorMessage)
+      this.emit("error", error)
+
+      // Reject the pending request if it has a req_id
+      if ("echo_req" in data && data.echo_req) {
+        const reqId = (data.echo_req as any).req_id
+        if (reqId && this.pendingRequests.has(reqId)) {
+          const { reject } = this.pendingRequests.get(reqId)!
+          this.pendingRequests.delete(reqId)
+          reject(new Error(errorMessage))
+        }
+      }
+      return
+    }
+
+    // Handle pending requests (only reached for non-error responses)
     if ("echo_req" in data && data.echo_req) {
       const reqId = (data.echo_req as any).req_id
       if (reqId && this.pendingRequests.has(reqId)) {
@@ -444,44 +482,6 @@ class DerivAPI {
       // Flush any pending requests that were queued before authorization
       this.flushRequestQueue()
       this.isHandlingAuth = false
-      return
-    }
-
-    // Handle error responses
-    if ("error" in data) {
-      const error = data.error as any
-      const errorMessage = error?.message || error?.code || JSON.stringify(error)
-
-      // ✅ GRACEFULLY HANDLE "AlreadySubscribed" ERRORS (common during React Strict Mode)
-      if (errorMessage.includes("already subscribed") || errorMessage.includes("AlreadySubscribed")) {
-        // Silently handle - this is expected during React Strict Mode double-invocation
-        if ("echo_req" in data && data.echo_req) {
-          const reqId = (data.echo_req as any).req_id
-          if (reqId && this.pendingRequests.has(reqId)) {
-            const { resolve } = this.pendingRequests.get(reqId)!
-            this.pendingRequests.delete(reqId)
-            resolve({
-              echo_req: data.echo_req,
-              subscription: { id: "existing" },
-              msg_type: (data.echo_req as any).ticks ? "tick" : "ohlc"
-            })
-          }
-        }
-        return
-      }
-
-      console.error("[DerivAPI] API Error:", errorMessage)
-      this.emit("error", error)
-      
-      // Reject the pending request if it has a req_id so we don't timeout
-      if ("echo_req" in data && data.echo_req) {
-        const reqId = (data.echo_req as any).req_id
-        if (reqId && this.pendingRequests.has(reqId)) {
-          const { reject } = this.pendingRequests.get(reqId)!
-          this.pendingRequests.delete(reqId)
-          reject(new Error(errorMessage))
-        }
-      }
       return
     }
 
@@ -1026,6 +1026,8 @@ class DerivAPI {
         reject,
       })
 
+      const symbolValue = typeof params.symbol === 'object' ? (params.symbol as any)?.symbol : params.symbol
+
       const request = {
         proposal: 1,
         amount: params.amount,
@@ -1034,7 +1036,7 @@ class DerivAPI {
         currency: params.currency || "USD",
         duration: params.duration,
         duration_unit: params.duration_unit,
-        symbol: typeof params.symbol === 'object' ? (params.symbol as any)?.symbol : params.symbol,
+        underlying_symbol: symbolValue,
         req_id: reqId,
         ...(params.barrier && { barrier: params.barrier }),
       }

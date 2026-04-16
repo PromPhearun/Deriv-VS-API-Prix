@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import type { SurferState } from "../../contexts/SurfContext"
 import type { Tick } from "../../types/deriv"
-
 interface SurferCharacterProps {
   state: SurferState
   tickHistory: Tick[]
