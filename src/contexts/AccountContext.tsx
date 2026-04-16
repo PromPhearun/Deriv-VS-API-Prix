@@ -166,11 +166,24 @@ export function AccountProvider({ children }: AccountProviderProps) {
           throw new Error("No accounts found for this user");
         }
         
-        // Find a real account if possible, otherwise use the first one
-        const realAccount = accountsData.data.find((a: any) => a.account_type !== "demo") || accountsData.data[0];
+        // Find the correct real trading account (prefer CR + USD account)
+        // V2 API returns all accounts including crypto wallets (DOT, BTC, etc.)
+        console.log("[AccountContext] Available accounts:", accountsData.data.map((a: any) => ({
+          id: a.account_id, type: a.account_type, currency: a.currency, balance: a.balance
+        })));
+        
+        const realAccount = 
+          // Priority 1: CR account with USD currency
+          accountsData.data.find((a: any) => a.account_id?.startsWith('CR') && a.currency === 'USD') ||
+          // Priority 2: Any CR account
+          accountsData.data.find((a: any) => a.account_id?.startsWith('CR')) ||
+          // Priority 3: Any non-demo account
+          accountsData.data.find((a: any) => a.account_type !== "demo") ||
+          // Fallback: first account
+          accountsData.data[0];
         const accountId = realAccount.account_id;
         
-        console.log(`[AccountContext] Found account ID: ${accountId}, requesting OTP...`);
+        console.log(`[AccountContext] Selected account ID: ${accountId} (currency: ${realAccount.currency}), requesting OTP...`);
         
         // 2. Request OTP for the account
         const otpResponse = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${accountId}/otp`, {
@@ -202,7 +215,7 @@ export function AccountProvider({ children }: AccountProviderProps) {
         window.dispatchEvent(new CustomEvent('account_connected', { detail: { accountType: 'real' } }))
         
         let realAccountLoginId = accountId
-        let realBalance = realAccount.balance || 0
+        let realBalance = Number(realAccount.balance) || 0
         let realCurrency = realAccount.currency || "USD"
         
         // Update state with connected account info
@@ -229,7 +242,7 @@ export function AccountProvider({ children }: AccountProviderProps) {
             console.log("[AccountContext] 💰 Balance update received:", balanceData)
             setAccountInfo((prev) => ({
               ...prev,
-              balance: balanceData.balance,
+              balance: Number(balanceData.balance) || 0,
               currency: balanceData.currency || prev.currency,
             }))
           })

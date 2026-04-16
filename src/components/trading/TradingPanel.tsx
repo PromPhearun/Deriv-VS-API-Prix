@@ -604,13 +604,23 @@ const TradingPanel: React.FC = () => {
               
               unsubscribe()
             } else {
-              // Contract still open - update active contract
+              // Contract still open - update active contract with all available fields
               useTradingStore.getState().updateActiveContract(buyResult.contract_id, {
                 current_spot: contract.current_spot,
                 current_spot_display_value: contract.current_spot_display_value,
                 profit: contract.profit,
                 bid_price: contract.bid_price,
                 status: contract.status,
+                // Populate fields that were placeholders at purchase time
+                date_expiry: contract.date_expiry,
+                date_start: contract.date_start,
+                display_name: contract.display_name || currentSymbol,
+                payout: contract.payout,
+                entry_spot: contract.entry_spot,
+                entry_spot_display_value: contract.entry_spot_display_value,
+                buy_price: contract.buy_price,
+                expiry_time: contract.expiry_time,
+                is_expired: contract.is_expired,
               })
 
               // Check SL/TP
