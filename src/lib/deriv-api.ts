@@ -1638,7 +1638,7 @@ class DerivAPI {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
-        "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+        "Deriv-App-ID": APP_ID,
       },
     })
 
@@ -1663,7 +1663,7 @@ class DerivAPI {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
-        "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+        "Deriv-App-ID": APP_ID,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
@@ -1692,7 +1692,7 @@ class DerivAPI {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
-          "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+          "Deriv-App-ID": APP_ID,
         },
       }
     )
@@ -1721,7 +1721,7 @@ class DerivAPI {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
-          "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089",
+          "Deriv-App-ID": APP_ID,
         },
       }
     )
