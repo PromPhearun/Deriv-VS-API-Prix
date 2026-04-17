@@ -135,9 +135,14 @@ const TradingPanel: React.FC = () => {
         if (hasRiseFall) availableTypes.add("RISE_FALL")
         console.log(`[TradingPanel] ${currentSymbol} - Rise/Fall available:`, hasRiseFall)
         
-        // Check for Higher/Lower availability (euro_non_atm barrier category)
+        // Check for Higher/Lower availability (contract_category: "callput")
+        // Since Deriv's API v3 format can have different properties compared to v1
         const hasHigherLower = contracts.available.some(
-          (c) => c.barrier_category === "euro_non_atm"
+          (c: any) => c.barrier_category === "euro_non_atm" || 
+                 c.contract_category === "callput" ||
+                 c.contract_category_display === "Higher/Lower" ||
+                 (c.contract_type === "CALL" && c.barriers === 1) ||
+                 (c.contract_type === "PUT" && c.barriers === 1)
         )
         if (hasHigherLower) availableTypes.add("HIGHER_LOWER")
         console.log(`[TradingPanel] ${currentSymbol} - Higher/Lower available:`, hasHigherLower)
