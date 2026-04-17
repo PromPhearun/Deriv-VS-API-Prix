@@ -523,6 +523,13 @@ const TradingPanel: React.FC = () => {
 
         // Track contract result for real accounts
         if (buyResult?.contract_id) {
+          // Fetch real balance immediately after purchase to deduct stake
+          api.getBalance().then((balanceRes) => {
+            if (balanceRes && balanceRes.balance !== undefined) {
+              updateBalance(Number(balanceRes.balance))
+            }
+          }).catch(console.error)
+
           // Store SL/TP if enabled
           const tp = isTakeProfitEnabled && takeProfitValue ? parseFloat(takeProfitValue) : undefined
           const sl = isStopLossEnabled && stopLossValue ? parseFloat(stopLossValue) : undefined
@@ -582,6 +589,13 @@ const TradingPanel: React.FC = () => {
               // Remove from active contracts
               removeActiveContract(buyResult.contract_id)
               
+              // Fetch real balance immediately after settlement
+              api.getBalance().then((balanceRes) => {
+                if (balanceRes && balanceRes.balance !== undefined) {
+                  updateBalance(Number(balanceRes.balance))
+                }
+              }).catch(console.error)
+
               // Add Deriv Points for real trade
               const stakeAmount = contract.buy_price || parseFloat(amount)
               const pointsAwarded = Math.floor(stakeAmount)
