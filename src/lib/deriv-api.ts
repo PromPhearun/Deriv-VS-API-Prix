@@ -23,7 +23,6 @@ import type {
   DerivAccountsResponse,
   ResetDemoBalanceResponse,
   OTPResponse,
-  CashierResponse,
 } from "../types/deriv"
 
 // Deriv API V2 WebSocket endpoint
@@ -1934,79 +1933,19 @@ class DerivAPI {
   }
 
   /**
-   * Get deposit cashier URL via WebSocket
+   * Get deposit cashier URL
    * Opens Deriv's hosted deposit page in a new tab
    */
   async deposit(): Promise<string> {
-    const reqId = this.getNextReqId()
-
-    const isReady = await this.waitUntilReady(10000)
-    if (!isReady) {
-      throw new Error("API not ready - connection timeout")
-    }
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(reqId, {
-        resolve: (data: CashierResponse) => {
-          if (data.cashier) {
-            resolve(data.cashier)
-          } else {
-            reject(new Error("Failed to get deposit URL"))
-          }
-        },
-        reject,
-      })
-
-      this.send({
-        cashier: "deposit",
-        req_id: reqId,
-      })
-
-      setTimeout(() => {
-        if (this.pendingRequests.has(reqId)) {
-          this.pendingRequests.delete(reqId)
-          reject(new Error("Request timeout"))
-        }
-      }, 15000)
-    })
+    return "https://app.deriv.com/cashier/deposit"
   }
 
   /**
-   * Get withdrawal cashier URL via WebSocket
+   * Get withdrawal cashier URL
    * Opens Deriv's hosted withdrawal page in a new tab
    */
   async withdraw(): Promise<string> {
-    const reqId = this.getNextReqId()
-
-    const isReady = await this.waitUntilReady(10000)
-    if (!isReady) {
-      throw new Error("API not ready - connection timeout")
-    }
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(reqId, {
-        resolve: (data: CashierResponse) => {
-          if (data.cashier) {
-            resolve(data.cashier)
-          } else {
-            reject(new Error("Failed to get withdrawal URL"))
-          }
-        },
-        reject,
-      })
-
-      this.send({
-        cashier: "withdraw",
-        req_id: reqId,
-      })
-
-      setTimeout(() => {
-        if (this.pendingRequests.has(reqId)) {
-          this.pendingRequests.delete(reqId)
-          reject(new Error("Request timeout"))
-        }
-      }, 15000)
-    })
+    return "https://app.deriv.com/cashier/withdrawal"
   }
 
   /**
