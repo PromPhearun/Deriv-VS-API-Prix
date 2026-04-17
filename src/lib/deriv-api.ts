@@ -1378,7 +1378,6 @@ class DerivAPI {
 
     this.send({
       balance: 1,
-      account: "all",
       subscribe: 1,
       req_id: reqId,
     })
