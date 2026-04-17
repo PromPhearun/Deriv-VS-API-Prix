@@ -26,13 +26,37 @@ export default function ActiveContractsPanel() {
   const handleSellContract = async (contractId: number, sellPrice: number) => {
     setSellLoading(contractId)
     try {
+      const contract = activeContracts.find(c => c.contract_id === contractId)
+      
+      // Check if it's a demo mock contract
+      if (contract && contract.shortcode.includes("_demo_")) {
+        console.log("[ActiveContracts] Mock contract sold:", contract)
+        addRecentTrade({
+          app_id: import.meta.env.VITE_DERIV_APP_ID || "1089",
+          buy_price: contract.buy_price,
+          contract_id: contractId,
+          contract_type: contract.contract_type,
+          currency: contract.currency,
+          date_expiry: contract.date_expiry,
+          date_start: contract.date_start,
+          longcode: contract.longcode,
+          payout: contract.payout,
+          profit: contract.profit,
+          sell_price: contract.bid_price || 0,
+          sell_time: Date.now() / 1000,
+          shortcode: contract.shortcode,
+          transaction_id: Date.now(),
+        })
+        removeActiveContract(contractId)
+        return
+      }
+
       const api = getDerivAPI()
       const result = await api.sellContract(contractId, sellPrice)
       
       console.log("[ActiveContracts] Contract sold:", result)
       
       // Add to recent trades
-      const contract = activeContracts.find(c => c.contract_id === contractId)
       if (contract) {
         addRecentTrade({
           app_id: import.meta.env.VITE_DERIV_APP_ID || "1089",
