@@ -136,9 +136,17 @@ Create automated trading strategies with:
 
 No environment variables required for public endpoint usage.
 
+## Authentication
+
+When users first visit the application, they are presented with a **Login Pop-up Board** that offers two paths:
+
+1.  **Log in with Deriv Account:** Connects directly to the user's real or demo Deriv accounts using the secure OAuth V2 (PKCE) flow.
+2.  **Log in as a guest:** Bypasses the initial login and drops the user into a default mockup demo environment for immediate exploration.
+
+Regardless of the initial choice, users can seamlessly switch between their real, demo, or mockup accounts at any time via the Account Switcher menu in the app.
+
 ## Future Enhancements
 
-- [ ] OAuth 2.0 authentication with PKCE
 - [ ] Account dashboard with balance/portfolio
 - [ ] Advanced strategy backtesting
 - [ ] Mobile app (React Native)
