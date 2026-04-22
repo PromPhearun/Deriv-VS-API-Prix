@@ -67,7 +67,7 @@ export function LoginModal() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <Card className="w-full max-w-md shadow-lg border-2">
+      <Card className="w-full max-w-lg shadow-lg border-2">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-2xl font-bold text-primary">Welcome to PROMO Trade</CardTitle>
           <CardDescription>
