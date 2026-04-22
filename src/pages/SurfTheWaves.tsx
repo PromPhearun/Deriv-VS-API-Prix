@@ -509,6 +509,9 @@ function SurfTheWavesContent() {
           const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
           
           if (buyResult?.contract_id) {
+            if (accountType === "demo") {
+               deductBalance(setup.stake)
+            }
             refreshBalance()
             startSession(currentSymbol, startPrice, setup.stake, {
               contractId: buyResult.contract_id.toString(),
