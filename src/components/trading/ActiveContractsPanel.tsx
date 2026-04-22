@@ -59,9 +59,28 @@ export default function ActiveContractsPanel() {
   // Force re-render every second to update the countdown
   const [, setTick] = useState(0)
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000)
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+      
+      // Sweep for expired mock or desynced real contracts
+      const now = Math.floor(Date.now() / 1000)
+      activeContracts.forEach(contract => {
+        // Auto-close mock contracts that have reached 0 ticks
+        if (contract.shortcode.includes("_demo_") && contract.duration_unit === "t") {
+          const ticksElapsed = now - contract.date_start
+          if (contract.duration && ticksElapsed >= contract.duration) {
+            handleSellContract(contract.contract_id, contract.bid_price || 0)
+          }
+        } else if (contract.shortcode.includes("_demo_") && contract.date_expiry) {
+          // Auto-close mock contracts that have reached expiry time
+          if (now >= contract.date_expiry) {
+            handleSellContract(contract.contract_id, contract.bid_price || 0)
+          }
+        }
+      })
+    }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [activeContracts])
 
   const handleSellContract = async (contractId: number, sellPrice: number) => {
     setSellLoading(contractId)
