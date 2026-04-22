@@ -9,7 +9,6 @@ import AlertSystem from "../components/trading/AlertSystem"
 import SocialTrading from "../components/social/SocialTrading"
 import AccountSnapshot from "../components/account/AccountSnapshot"
 import AccountSwitcher from "../components/account/AccountSwitcher"
-import DepositWithdraw from "../components/account/DepositWithdraw"
 import DerivPoints from "../components/trading/DerivPoints"
 import AssetSelector from "../components/trading/AssetSelector"
 import ChartStyleSelector from "../components/charts/ChartStyleSelector"
@@ -541,11 +540,14 @@ function Home() {
           </div>
 
           <div className="lg:col-span-1 space-y-4">
-            <TradingPanel />
-            <div className="border-t pt-4 mt-2 space-y-4">
+            <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground px-1 uppercase tracking-wider">Account & Wallet</h3>
               <AccountSwitcher />
-              <DepositWithdraw />
+            </div>
+            <div className="border-t pt-4 mt-2">
+              <TradingPanel />
+            </div>
+            <div className="border-t pt-4 mt-2">
               <AccountSnapshot />
             </div>
             <div className="border-t pt-4 mt-2">
