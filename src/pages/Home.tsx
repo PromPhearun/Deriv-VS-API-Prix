@@ -21,17 +21,18 @@ import { Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Gamepad2, Home as H
 import { Link } from "react-router-dom"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 import Watchlist from "../components/trading/Watchlist"
+import { useAccount } from "../contexts/AccountContext"
 
 function Home() {
+  const { isConnected, isConnecting } = useAccount()
+
   const {
     symbols,
     currentSymbol,
     currentTick,
     tickHistory,
     ohlcHistory,
-    isConnected,
-    isConnecting,
-    error,
+    error: tradingError,
     chartStyle,
     setCurrentTick,
     setTickHistory,
@@ -42,6 +43,8 @@ function Home() {
     fetchSymbols,
     clearState,
   } = useTradingStore()
+
+  const error = tradingError
 
   // Store the unsubscribe function for ticks and OHLC
   const tickUnsubscribeRef = useRef<(() => void) | null>(null)
