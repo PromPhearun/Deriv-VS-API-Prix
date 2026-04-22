@@ -78,16 +78,6 @@ export function AccountProvider({ children }: AccountProviderProps) {
     })
   }, [])
 
-  const handleBalanceUpdate = useCallback((data: any) => {
-    if (data?.balance?.balance !== undefined) {
-      setAccountInfo((prev) => ({
-        ...prev,
-        balance: data.balance.balance,
-        currency: data.balance.currency || prev.currency,
-      }))
-    }
-  }, [])
-
   const handleAuthorize = useCallback((data: any) => {
     if (data?.account_list && data.loginid) {
       setAccountInfo((prev) => ({
