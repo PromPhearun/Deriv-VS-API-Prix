@@ -9,7 +9,7 @@ export function LoginModal() {
 
   useEffect(() => {
     // Check if user has already chosen a login method
-    const hasChosenLogin = localStorage.getItem('has_chosen_login')
+    const hasChosenLogin = sessionStorage.getItem('has_chosen_login')
     
     // Check if we're in the middle of an OAuth callback
     const params = new URLSearchParams(window.location.search)
@@ -20,19 +20,19 @@ export function LoginModal() {
       setIsOpen(true)
     } else if (isOAuthCallback) {
       // If it is a callback, mark as chosen so it doesn't pop up again
-      localStorage.setItem('has_chosen_login', 'true')
+      sessionStorage.setItem('has_chosen_login', 'true')
     }
   }, [])
 
   const handleGuestLogin = () => {
-    localStorage.setItem('has_chosen_login', 'true')
+    sessionStorage.setItem('has_chosen_login', 'true')
     setIsOpen(false)
   }
 
   const handleDerivLogin = async () => {
     setIsConnecting(true)
     try {
-      localStorage.setItem('has_chosen_login', 'true')
+      sessionStorage.setItem('has_chosen_login', 'true')
       
       const clientId = "32VnV8czGxufJh1E0GQUD" // V2 OAuth Client ID
       const { generatePKCEChallenge } = await import("../../lib/auth")
