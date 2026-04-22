@@ -22,6 +22,7 @@
 - **One-Click Trading**: RISE/FALL buttons with stake selection
 - **Quick Trade Panel**: Amount input, duration, quick amounts
 - **Proposal Display**: Shows payout and cost before trade
+- **Real Accounts & Trading**: Support for Real Demo and Real Account trading directly from Deriv API V2
 
 ### Phase 4: Innovation Feature - Strategy Builder (Completed)
 - **Compound Conditions**: AND/OR logic
