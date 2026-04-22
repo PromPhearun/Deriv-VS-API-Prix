@@ -519,7 +519,10 @@ function SurfTheWavesContent() {
               api.subscribeProposalOpenContract(buyResult.contract_id, (contract) => {
                 if (contract.is_sold === 1 || contract.status === "sold") {
                   const profit = contract.profit || 0
-                  refreshBalance()
+                  
+                  // Wrap in a short timeout to allow the backend balance to update before fetching
+                  setTimeout(() => refreshBalance(), 500)
+                  
                   endSession(
                     `surf-${buyResult.contract_id}`,
                     contract.sell_spot || contract.current_spot || 0,
