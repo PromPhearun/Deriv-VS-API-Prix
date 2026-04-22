@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { ShieldCheck, User, Loader2 } from 'lucide-react'
+import { useAccount } from '../../contexts/AccountContext'
 
 export function LoginModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
+  const { disconnect } = useAccount()
 
   useEffect(() => {
     // Check if user has already chosen a login method
@@ -25,6 +27,7 @@ export function LoginModal() {
   }, [])
 
   const handleGuestLogin = () => {
+    disconnect()
     sessionStorage.setItem('has_chosen_login', 'true')
     setIsOpen(false)
   }
