@@ -342,6 +342,8 @@ const TradingPanel: React.FC = () => {
         profit_percentage: 0,
         purchase_time: startTime / 1000,
         transaction_ids: { buy: demoContractId },
+        duration: parseInt(duration),
+        duration_unit: durationUnit,
       })
       
       // Resolve immediately so the user can place another trade concurrently
@@ -584,6 +586,8 @@ const TradingPanel: React.FC = () => {
             profit_percentage: 0,
             purchase_time: Date.now() / 1000,
             transaction_ids: { buy: buyResult.transaction_id || 0 },
+            duration: parseInt(duration),
+            duration_unit: durationUnit,
           })
           
           const unsubscribe = api.subscribeProposalOpenContract(buyResult.contract_id, (contract) => {

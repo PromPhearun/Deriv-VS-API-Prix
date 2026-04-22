@@ -146,7 +146,12 @@ export default function ActiveContractsPanel() {
                         {contract.status.toUpperCase()}
                       </span>
                     ) : (
-                      contract.date_expiry ? (
+                      contract.duration_unit === "t" && contract.duration ? (
+                        <div className="flex items-center gap-1.5 text-xs font-mono bg-background/50 border px-2 py-1 rounded shadow-sm text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {Math.max(0, contract.duration - (contract.audit?.all_ticks?.length || 0))} Ticks
+                        </div>
+                      ) : contract.date_expiry ? (
                         <div className="flex items-center gap-1.5 text-xs font-mono bg-background/50 border px-2 py-1 rounded shadow-sm text-muted-foreground">
                           <Clock className="w-3 h-3" />
                           {formatTimeLeft(contract.date_expiry)}

@@ -180,6 +180,8 @@ export interface ProposalOpenContract {
     sell?: number
   }
   underlying: string
+  duration?: number
+  duration_unit?: string
 }
 
 export interface ProposalOpenContractResponse {
