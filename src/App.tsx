@@ -5,12 +5,14 @@ import SurfTheWaves from './pages/SurfTheWaves'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AccountProvider } from './contexts/AccountContext'
 import { Toaster } from 'react-hot-toast'
+import { LoginModal } from './components/auth/LoginModal'
 
 function App() {
   return (
     <ThemeProvider>
       <AccountProvider>
         <Toaster position="top-center" />
+        <LoginModal />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mochi-moto" element={<MochiMoto />} />
