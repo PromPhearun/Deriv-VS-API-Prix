@@ -47,12 +47,21 @@ const formatTimeLeft = (expiry: number, unit?: string, duration?: number, startT
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
 
+import { useEffect } from "react"
+
 export default function ActiveContractsPanel() {
   const activeContracts = useTradingStore((state) => state.activeContracts)
   const removeActiveContract = useTradingStore((state) => state.removeActiveContract)
   const addRecentTrade = useTradingStore((state) => state.addRecentTrade)
   
   const [sellLoading, setSellLoading] = useState<number | null>(null)
+  
+  // Force re-render every second to update the countdown
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const handleSellContract = async (contractId: number, sellPrice: number) => {
     setSellLoading(contractId)
@@ -180,7 +189,8 @@ export default function ActiveContractsPanel() {
                       contract.duration_unit === "t" && contract.duration ? (
                         <div className="flex items-center gap-1.5 text-xs font-mono bg-background/50 border px-2 py-1 rounded shadow-sm text-muted-foreground">
                           <Clock className="w-3 h-3" />
-                          {Math.max(0, contract.duration - (contract.audit?.all_ticks?.length || 0))} Ticks left
+                          {/* If contract.tick_count is maintained by API or store, use it, else fallback to audit array length or time elapsed estimation for demo */}
+                          {Math.max(0, contract.duration - ((contract as any).tick_count || (contract.audit as any)?.tick_count || contract.audit?.all_ticks?.length || (contract.shortcode.includes("_demo_") ? Math.floor((Date.now() / 1000) - contract.date_start) : 0)))} Ticks left
                         </div>
                       ) : contract.date_expiry ? (
                         <div className="flex items-center gap-1.5 text-xs font-mono bg-background/50 border px-2 py-1 rounded shadow-sm text-muted-foreground">
