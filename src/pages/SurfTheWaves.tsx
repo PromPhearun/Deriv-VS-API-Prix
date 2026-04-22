@@ -489,7 +489,8 @@ function SurfTheWavesContent() {
       const startPrice = tickHistory[tickHistory.length - 1].quote
       
       try {
-        if (accountType === "real") {
+        const isConnectedDemo = localStorage.getItem("deriv_access_token") && localStorage.getItem("deriv_access_token") !== "null";
+        if (accountType === "real" || (accountType === "demo" && isConnectedDemo)) {
           const api = getDerivAPI()
           const isReady = await api.waitUntilReady(5000)
           if (!isReady) throw new Error("API not ready")
@@ -508,6 +509,7 @@ function SurfTheWavesContent() {
           const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
           
           if (buyResult?.contract_id) {
+            refreshBalance()
             startSession(currentSymbol, startPrice, setup.stake, {
               contractId: buyResult.contract_id.toString(),
               prediction: setup.prediction,
@@ -575,7 +577,8 @@ function SurfTheWavesContent() {
   const handleEndSession = useCallback(() => {
     if (currentSession && tickHistory.length > 0 && activeSetup) {
       // Do not manually end real account trades, let the contract update handle it
-      if (accountType === "real" && currentSession.contractId) {
+      const isConnectedDemo = localStorage.getItem("deriv_access_token") && localStorage.getItem("deriv_access_token") !== "null";
+      if ((accountType === "real" || (accountType === "demo" && isConnectedDemo)) && currentSession.contractId) {
         return
       }
 

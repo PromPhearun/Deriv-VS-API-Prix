@@ -31,7 +31,7 @@ export interface GhostTradingPanelProps {
 const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) => {
   const [isExpanded, setIsExpanded] = useState(true)
   const { currentSymbol, currentTick, addDerivPoints } = useTradingStore()
-  const { balance, accountType } = useAccount()
+  const { balance, accountType, refreshBalance } = useAccount()
   const { addGhostTrade, settleGhostTrade, activeGhostTrade, mascotEmotion } = useGhost()
   
   const [amount, setAmount] = useState<string>("10")
@@ -106,7 +106,8 @@ const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) =
     setIsTrading(true)
 
     try {
-      if (accountType === "real") {
+      const isConnectedDemo = localStorage.getItem("deriv_access_token") && localStorage.getItem("deriv_access_token") !== "null";
+      if (accountType === "real" || (accountType === "demo" && isConnectedDemo)) {
         const api = getDerivAPI()
         const isReady = await api.waitUntilReady(5000)
         if (!isReady) throw new Error("API not ready")
@@ -125,6 +126,7 @@ const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) =
         const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
         
         if (buyResult?.contract_id) {
+          refreshBalance()
           const tradeId = `ghost-${buyResult.contract_id}`
           
           addGhostTrade({
@@ -180,7 +182,7 @@ const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) =
       setError(err instanceof Error ? err.message : "Failed to execute trade")
       setIsTrading(false)
     }
-  }, [currentTick, amount, duration, durationUnit, currentSymbol, addGhostTrade, balance, accountType, onTradeStart, settleGhostTrade])
+  }, [currentTick, amount, duration, durationUnit, currentSymbol, addGhostTrade, balance, accountType, onTradeStart, settleGhostTrade, refreshBalance])
 
   const isDisabled = isTrading || !currentTick || !!activeGhostTrade
 
