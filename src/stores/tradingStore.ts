@@ -431,34 +431,52 @@ export const useTradingStore = create<TradingState>()(
     return cashAmount
   },
 
-  clearState: () => set({
-    symbols: [],
-    currentSymbol: "R_100",
-    isSymbolLoading: false,
-    currentTick: null,
-    tickHistory: [],
-    totalTicksReceived: 0,
-    currentOHLC: null,
-    ohlcHistory: [],
-    chartStyle: 'area',
-    isTrading: false,
-    activeContracts: [],
-    recentTrades: [],
-    isConnected: false,
-    isConnecting: false,
-    error: null,
-    lastConnected: null,
-    stopLoss: null,
-    takeProfit: null,
-    contractsSLTP: new Map(),
-    barrier: null,
-    barrierHigh: null,
-    barrierLow: null,
-    barrierOffset: null,
-    minBarrierOffset: null,
-    maxBarrierOffset: null,
-    pipSize: null,
-  }),
+  clearState: () =>
+    set((state) => ({
+      // ✅ PRESERVE user-selected preferences across reconnects.
+      //
+      // `clearState` is called by Home.initializeAPI (and MochiMoto/Surf)
+      // after `cleanSlateStartup` on every (re)connect. Previously this
+      // reset `currentSymbol` back to the "R_100" default, which undid
+      // the user's choice that zustand-persist had just rehydrated from
+      // sessionStorage. Concretely: user refreshed the page while viewing
+      // BTC/USD → rehydration set currentSymbol='cryBTCUSD' → initializeAPI
+      // called clearState() → currentSymbol silently flipped to 'R_100'.
+      // When `account_connected` fired after OAuth, the handler's useEffect
+      // (deps include currentSymbol) re-registered closed over 'R_100',
+      // then fetched ticks_history/subscribed ticks for R_100 — overwriting
+      // the BTC chart and stripping the live price / H / L.
+      //
+      // These two fields are user preferences persisted to sessionStorage,
+      // not connection-scoped state, so they must survive a state clear.
+      currentSymbol: state.currentSymbol,
+      chartStyle: state.chartStyle,
+      // Everything below is genuinely connection-scoped and resets fresh.
+      symbols: [],
+      isSymbolLoading: false,
+      currentTick: null,
+      tickHistory: [],
+      totalTicksReceived: 0,
+      currentOHLC: null,
+      ohlcHistory: [],
+      isTrading: false,
+      activeContracts: [],
+      recentTrades: [],
+      isConnected: false,
+      isConnecting: false,
+      error: null,
+      lastConnected: null,
+      stopLoss: null,
+      takeProfit: null,
+      contractsSLTP: new Map(),
+      barrier: null,
+      barrierHigh: null,
+      barrierLow: null,
+      barrierOffset: null,
+      minBarrierOffset: null,
+      maxBarrierOffset: null,
+      pipSize: null,
+    })),
 }),
 {
   name: 'trading-store',

@@ -380,74 +380,67 @@ function Home() {
 
     // Listen for account connection changes to force re-subscribe
     useEffect(() => {
+      // ✅ Re-entrancy guard local to this effect instance. Prevents the
+      // handler from running concurrently with itself when the
+      // `account_connected` window event fires more than once in quick
+      // succession (observed in prod during the OAuth/OTP swap — two
+      // dispatches within ~20ms because AccountContext's auto-reconnect
+      // and initial-connect paths can both fire). Two concurrent runs
+      // would otherwise issue duplicate ticks_history + ticks subscribe
+      // for the SAME symbol, racing each other.
+      let isHandling = false
+
       const handleAccountConnected = async () => {
-        console.log("[Home] Account connected event received, re-subscribing...")
-
-        // Clear any lingering connection errors (e.g. Request timeout)
-        // caused by the initial public connection being dropped
-        setConnectionState({ error: null })
-
-        if (!currentSymbol) return
-
-        const api = getDerivAPI()
-        const symbolToLoad = currentSymbol
-        loadingSymbolRef.current = symbolToLoad
-
-        // 1. Force complete cleanup of anything left over from the pre-OAuth
-        //    public connection (handlers, local refs).
-        await cleanupSubscriptions()
-
-        // 2. Wait for the newly-authenticated WebSocket to have fully torn
-        //    down any server-side market-data streams that may still be
-        //    running for a DIFFERENT symbol than the one the user is now
-        //    viewing. Without this, zombie ticks from the previous symbol
-        //    can race with the fresh history response below and leave the
-        //    chart header showing stale data.
-        try {
-          await Promise.all([
-            api.forgetAll("ticks").catch(() => undefined),
-            api.forgetAll("candles").catch(() => undefined),
-          ])
-        } catch {
-          // Non-fatal — the store-layer guards still protect against leaks.
+        if (isHandling) {
+          console.log("[Home] account_connected re-entry ignored")
+          return
         }
-
-        // Give the WS a moment to settle after forget_all.
-        await new Promise((r) => setTimeout(r, 100))
-
-        // Abort if the user switched symbols while we were waiting.
-        if (loadingSymbolRef.current !== symbolToLoad) return
-
-        // 3. Re-fetch the chart history for the current symbol. This is the
-        //    critical step that was missing before — previously this handler
-        //    only called `subscribeToStream`, so after account_connected the
-        //    live stream would start but no historical candles/ticks were
-        //    ever re-seeded, producing an empty chart.
+        isHandling = true
         try {
-          if (chartStyle === "area" || chartStyle === "line") {
-            const history = await api.getTickHistory(symbolToLoad, 1000)
-            if (loadingSymbolRef.current !== symbolToLoad) return
-            const ticks = history.prices.map((price, i) => ({
-              epoch: history.times[i],
-              quote: price,
-              symbol: symbolToLoad,
-            }))
-            setTickHistory(ticks)
-          } else {
-            try {
-              const ohlcData = await api.getOHLCHistory(symbolToLoad, 60, 500)
-              if (loadingSymbolRef.current !== symbolToLoad) return
-              const ohlcHistory = ohlcData.candles.map((c) => ({
-                open: Number(c.open),
-                high: Number(c.high),
-                low: Number(c.low),
-                close: Number(c.close),
-                epoch: c.epoch,
-                granularity: 60,
-                symbol: symbolToLoad,
-              }))
-              setOHLCHistory(ohlcHistory)
-            } catch {
+          console.log("[Home] Account connected event received, re-subscribing...")
+
+          // Clear any lingering connection errors (e.g. Request timeout)
+          // caused by the initial public connection being dropped
+          setConnectionState({ error: null })
+
+          if (!currentSymbol) return
+
+          const api = getDerivAPI()
+          const symbolToLoad = currentSymbol
+          loadingSymbolRef.current = symbolToLoad
+
+          // 1. Force complete cleanup of anything left over from the pre-OAuth
+          //    public connection (handlers, local refs).
+          await cleanupSubscriptions()
+
+          // 2. Wait for the newly-authenticated WebSocket to have fully torn
+          //    down any server-side market-data streams that may still be
+          //    running for a DIFFERENT symbol than the one the user is now
+          //    viewing. Without this, zombie ticks from the previous symbol
+          //    can race with the fresh history response below and leave the
+          //    chart header showing stale data.
+          try {
+            await Promise.all([
+              api.forgetAll("ticks").catch(() => undefined),
+              api.forgetAll("candles").catch(() => undefined),
+            ])
+          } catch {
+            // Non-fatal — the store-layer guards still protect against leaks.
+          }
+
+          // Give the WS a moment to settle after forget_all.
+          await new Promise((r) => setTimeout(r, 100))
+
+          // Abort if the user switched symbols while we were waiting.
+          if (loadingSymbolRef.current !== symbolToLoad) return
+
+          // 3. Re-fetch the chart history for the current symbol. This is the
+          //    critical step that was missing before — previously this handler
+          //    only called `subscribeToStream`, so after account_connected the
+          //    live stream would start but no historical candles/ticks were
+          //    ever re-seeded, producing an empty chart.
+          try {
+            if (chartStyle === "area" || chartStyle === "line") {
               const history = await api.getTickHistory(symbolToLoad, 1000)
               if (loadingSymbolRef.current !== symbolToLoad) return
               const ticks = history.prices.map((price, i) => ({
@@ -456,16 +449,45 @@ function Home() {
                 symbol: symbolToLoad,
               }))
               setTickHistory(ticks)
+            } else {
+              try {
+                const ohlcData = await api.getOHLCHistory(symbolToLoad, 60, 500)
+                if (loadingSymbolRef.current !== symbolToLoad) return
+                const ohlcHistory = ohlcData.candles.map((c) => ({
+                  open: Number(c.open),
+                  high: Number(c.high),
+                  low: Number(c.low),
+                  close: Number(c.close),
+                  epoch: c.epoch,
+                  granularity: 60,
+                  symbol: symbolToLoad,
+                }))
+                setOHLCHistory(ohlcHistory)
+              } catch {
+                const history = await api.getTickHistory(symbolToLoad, 1000)
+                if (loadingSymbolRef.current !== symbolToLoad) return
+                const ticks = history.prices.map((price, i) => ({
+                  epoch: history.times[i],
+                  quote: price,
+                  symbol: symbolToLoad,
+                }))
+                setTickHistory(ticks)
+              }
             }
+          } catch (err) {
+            console.warn("[Home] Re-fetching history after account_connected failed:", err)
           }
-        } catch (err) {
-          console.warn("[Home] Re-fetching history after account_connected failed:", err)
-        }
 
-        // 4. Re-subscribe to the live stream last, so the history is already
-        //    in place before live ticks start arriving.
-        if (loadingSymbolRef.current !== symbolToLoad) return
-        await subscribeToStream(symbolToLoad, chartStyle)
+          // 4. Re-subscribe to the live stream last, so the history is already
+          //    in place before live ticks start arriving.
+          if (loadingSymbolRef.current !== symbolToLoad) return
+          await subscribeToStream(symbolToLoad, chartStyle)
+        } finally {
+          // Release the re-entrancy guard whether we exited via early-return,
+          // an intermediate symbol-change abort, or completed the full
+          // re-subscribe flow.
+          isHandling = false
+        }
       }
 
       window.addEventListener('account_connected', handleAccountConnected)
