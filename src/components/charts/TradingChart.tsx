@@ -31,7 +31,6 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
   const {
     tickHistory,
     ohlcHistory,
-    currentSymbol,
     barrierHigh,
     barrierLow,
     isSymbolLoading,
@@ -192,37 +191,7 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
 
     seriesRef.current = newSeries
 
-    // Clear the new series data immediately to prevent stale data rendering
-    try {
-      newSeries.setData([])
-    } catch (e) {
-      console.warn("[TradingChart] Failed to clear new series:", e)
-    }
-
-    // Reset chart time scale to auto-fit new data
-    if (chartRef.current) {
-      chartRef.current.timeScale().resetTimeScale()
-      chartRef.current.timeScale().fitContent()
-      chartRef.current.timeScale().scrollToRealTime()
-    }
   }, [chartStyle])
-
-  // Clear chart data and reset scale when symbol changes
-  useEffect(() => {
-    if (seriesRef.current) {
-      try {
-        seriesRef.current.setData([])
-      } catch {
-        // Ignore
-      }
-    }
-    // Reset chart time scale to auto-fit new data
-    if (chartRef.current) {
-      chartRef.current.timeScale().resetTimeScale()
-      chartRef.current.timeScale().fitContent()
-      chartRef.current.timeScale().scrollToRealTime()
-    }
-  }, [currentSymbol, chartStyle])
 
   // Update chart data based on chart style
   useEffect(() => {
