@@ -379,6 +379,11 @@ function Home() {
       
       // Clean up ALL previous subscriptions (handlers + API)
       await cleanupSubscriptions()
+
+      // Give UI a tick to clear existing chart data visually
+      setTickHistory([])
+      setOHLCHistory([])
+      await new Promise(resolve => setTimeout(resolve, 50))
       
       const api = getDerivAPI()
       
