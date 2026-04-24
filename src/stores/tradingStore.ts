@@ -264,13 +264,25 @@ export const useTradingStore = create<TradingState>()(
 
   setOHLCHistory: (history) => set({ ohlcHistory: history }),
 
-  setChartStyle: (style) => set({
-    chartStyle: style,
-    tickHistory: [],
-    ohlcHistory: [],
-    currentTick: null,
-    currentOHLC: null
-  }),
+  setChartStyle: (style) => {
+    // Only reset state if changing from tick to OHLC or vice versa
+    // This allows smooth transitions between Area <-> Line and OHLC <-> Candlestick
+    const state = get()
+    const isTickCurrent = state.chartStyle === 'area' || state.chartStyle === 'line'
+    const isTickNew = style === 'area' || style === 'line'
+    
+    if (isTickCurrent !== isTickNew) {
+      set({
+        chartStyle: style,
+        tickHistory: [],
+        ohlcHistory: [],
+        currentTick: null,
+        currentOHLC: null
+      })
+    } else {
+      set({ chartStyle: style })
+    }
+  },
 
   setConnectionState: (connectionState) => set((state) => ({
     ...state,

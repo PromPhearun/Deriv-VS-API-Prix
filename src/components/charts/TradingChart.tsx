@@ -199,40 +199,37 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
       console.warn("[TradingChart] Failed to clear new series:", e)
     }
 
-    // Recreate barrier lines if they exist
-    if (barrierHigh !== null) {
-      try {
-        barrierHighLineRef.current = newSeries.createPriceLine({
-          price: barrierHigh,
-          color: "hsl(47.9, 95.8%, 53.1%)",
-          lineWidth: 2,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: "Higher Barrier",
-        })
-      } catch (error) {
-        console.warn("Failed to recreate higher barrier line:", error)
-      }
-    }
-    if (barrierLow !== null) {
-      try {
-        barrierLowLineRef.current = newSeries.createPriceLine({
-          price: barrierLow,
-          color: "hsl(47.9, 95.8%, 53.1%)",
-          lineWidth: 2,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: "Lower Barrier",
-        })
-      } catch (error) {
-        console.warn("Failed to recreate lower barrier line:", error)
-      }
+    // Reset chart time scale to auto-fit new data
+    if (chartRef.current) {
+      chartRef.current.timeScale().resetTimeScale()
+      chartRef.current.timeScale().fitContent()
+      chartRef.current.timeScale().scrollToRealTime()
     }
   }, [chartStyle])
+
+  // Clear chart data and reset scale when symbol changes
+  useEffect(() => {
+    if (seriesRef.current) {
+      try {
+        seriesRef.current.setData([])
+      } catch {
+        // Ignore
+      }
+    }
+    // Reset chart time scale to auto-fit new data
+    if (chartRef.current) {
+      chartRef.current.timeScale().resetTimeScale()
+      chartRef.current.timeScale().fitContent()
+      chartRef.current.timeScale().scrollToRealTime()
+    }
+  }, [currentSymbol, chartStyle])
 
   // Update chart data based on chart style
   useEffect(() => {
     if (!seriesRef.current) return
+
+    // If symbol is loading or empty array passed, do nothing and let it shimmer
+    if (isSymbolLoading) return
 
     if (chartStyle === 'area' || chartStyle === 'line') {
       // Use tick data for area/line charts
@@ -316,21 +313,11 @@ const TradingChart: React.FC<TradingChartProps> = memo(({ className }) => {
     }
 
     if (chartRef.current) {
+      // Auto fit content to ensure chart doesn't look empty or start at wrong scale
+      chartRef.current.timeScale().fitContent()
       chartRef.current.timeScale().scrollToRealTime()
     }
   }, [tickHistory, ohlcHistory, chartStyle])
-
-  // Clear chart data and reset scale when symbol changes
-  useEffect(() => {
-    if (seriesRef.current) {
-      seriesRef.current.setData([])
-    }
-    // Reset chart time scale to auto-fit new data
-    if (chartRef.current) {
-      chartRef.current.timeScale().resetTimeScale()
-      chartRef.current.timeScale().scrollToRealTime()
-    }
-  }, [currentSymbol])
 
   // Barrier price lines — uses createPriceLine for full-width horizontal lines
   useEffect(() => {

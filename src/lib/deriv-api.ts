@@ -941,6 +941,38 @@ class DerivAPI {
         callback,
       })
 
+      // First, get historical ticks to seed the chart properly
+      try {
+        const historyResponse = await this.request({
+          ticks_history: symbol,
+          count: 500,
+          end: "latest",
+          style: "ticks",
+          req_id: this.getNextReqId(),
+        })
+        
+        if (historyResponse && historyResponse.history) {
+          const { prices, times } = historyResponse.history
+          if (prices && times && prices.length === times.length) {
+            // First, process historical ticks and push them all at once to avoid constant re-renders
+            for (let i = 0; i < prices.length; i++) {
+              const p = Number(prices[i])
+              callback({
+                quote: p,
+                epoch: Number(times[i]),
+                symbol: symbol,
+                id: "",
+                pip_size: 0,
+                ask: p,
+                bid: p
+              })
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[DerivAPI] Failed to get history for ${symbol} before subscribing`, e)
+      }
+
       // ✅ PHASE 4: SEND SUBSCRIPTION REQUEST AND AWAIT CONFIRMATION
       const response = await this.request({
         ticks: symbol,
