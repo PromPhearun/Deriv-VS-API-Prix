@@ -154,6 +154,16 @@ export const useTradingStore = create<TradingState>()(
   setCurrentTick: (tick) => {
     const state = get()
 
+    // ✅ STRICT SYMBOL GUARD:
+    // Reject any tick whose symbol does not match the store's currentSymbol.
+    // This closes the final race-condition window where a stale tick from the
+    // *previous* symbol's subscription could arrive after the user switched
+    // symbols but before the server's `forget_all` took effect — which was
+    // the direct cause of the chart header showing e.g. "BTC/USD 735.32".
+    if (tick.symbol && tick.symbol !== state.currentSymbol) {
+      return
+    }
+
     // Check if this epoch already exists in history (deduplication)
     const existingIndex = state.tickHistory.findIndex(t => t.epoch === tick.epoch)
 
@@ -184,6 +194,11 @@ export const useTradingStore = create<TradingState>()(
   addTickToHistory: (tick) => {
     const state = get()
 
+    // ✅ STRICT SYMBOL GUARD (see setCurrentTick)
+    if (tick.symbol && tick.symbol !== state.currentSymbol) {
+      return
+    }
+
     // Check if this epoch already exists in history (deduplication)
     const existingIndex = state.tickHistory.findIndex(t => t.epoch === tick.epoch)
 
@@ -206,10 +221,32 @@ export const useTradingStore = create<TradingState>()(
     set({ tickHistory: newHistory })
   },
 
-  setTickHistory: (history) => set({ tickHistory: history }),
+  setTickHistory: (history) => {
+    // ✅ STRICT SYMBOL GUARD:
+    // Only accept a bulk history write whose ticks match the current symbol.
+    // If an older, in-flight getTickHistory() response arrives after the user
+    // has already switched symbol, this guard prevents it from overwriting
+    // the new symbol's chart with stale data.
+    const state = get()
+    if (history.length > 0) {
+      const firstSymbol = history[0]?.symbol
+      if (firstSymbol && firstSymbol !== state.currentSymbol) {
+        console.warn(
+          `[tradingStore] Dropping stale tick history for ${firstSymbol} (current is ${state.currentSymbol})`
+        )
+        return
+      }
+    }
+    set({ tickHistory: history })
+  },
 
   setCurrentOHLC: (ohlc) => {
     const state = get()
+
+    // ✅ STRICT SYMBOL GUARD (see setCurrentTick)
+    if (ohlc.symbol && ohlc.symbol !== state.currentSymbol) {
+      return
+    }
 
     // Check if this epoch already exists in history (deduplication)
     const existingIndex = state.ohlcHistory.findIndex(o => o.epoch === ohlc.epoch)
@@ -236,6 +273,7 @@ export const useTradingStore = create<TradingState>()(
       ohlcHistory: newHistory,
     })
   },
+
 
   addOHLCToHistory: (ohlc) => {
     const state = get()

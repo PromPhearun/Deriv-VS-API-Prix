@@ -955,37 +955,22 @@ class DerivAPI {
         callback,
       })
 
-      // First, get historical ticks to seed the chart properly
-      try {
-        const historyResponse = await this.request({
-          ticks_history: symbol,
-          count: 500,
-          end: "latest",
-          style: "ticks",
-          req_id: this.getNextReqId(),
-        })
-        
-        if (historyResponse && historyResponse.history) {
-          const { prices, times } = historyResponse.history
-          if (prices && times && prices.length === times.length) {
-            // First, process historical ticks and push them all at once to avoid constant re-renders
-            for (let i = 0; i < prices.length; i++) {
-              const p = Number(prices[i])
-              callback({
-                quote: p,
-                epoch: Number(times[i]),
-                symbol: symbol,
-                id: "",
-                pip_size: 0,
-                ask: p,
-                bid: p
-              })
-            }
-          }
-        }
-      } catch (e) {
-        console.warn(`[DerivAPI] Failed to get history for ${symbol} before subscribing`, e)
-      }
+      // NOTE: Historical tick seeding has been INTENTIONALLY REMOVED here.
+      // Previously this function also fetched `ticks_history` and pumped every
+      // historical tick through `callback`. That caused two serious problems:
+      //   1. Double-fetch race — callers (Home.tsx) already fetch history
+      //      explicitly via getTickHistory() before subscribing, so we were
+      //      asking the server for the same 500 ticks twice on every symbol
+      //      switch. Response ordering on the shared WebSocket is not
+      //      guaranteed, leading to stale/new history results overwriting
+      //      each other and the chart ending up with no historical points.
+      //   2. Cross-symbol leak — if the previous symbol's `forget_all` had
+      //      not completed when this historical batch arrived, the ticks
+      //      could be routed into the store before the new symbol's data,
+      //      causing the chart header to show the old symbol's price under
+      //      the new symbol's label.
+      // Callers must now fetch history themselves (they already do). This
+      // function is now a pure LIVE subscription.
 
       // ✅ PHASE 4: SEND SUBSCRIPTION REQUEST AND AWAIT CONFIRMATION
       const response = await this.request({

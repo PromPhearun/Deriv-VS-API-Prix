@@ -283,7 +283,35 @@ function Home() {
       // Clean up ALL previous subscriptions (handlers + API)
       await cleanupSubscriptions()
       
-      // Wait a tiny bit to ensure WebSocket state settles after unsubscribe
+      const api = getDerivAPI()
+
+      // ✅ CRITICAL FIX for "chart starts from 0" after symbol switch:
+      // Explicitly await the server-side termination of the PREVIOUS symbol's
+      // tick/candle streams before we fetch history for the NEW symbol.
+      //
+      // Without this await, the server may still be pushing the old symbol's
+      // ticks into the shared WebSocket at the same moment we issue the new
+      // `ticks_history` request. Because responses on a single WS can arrive
+      // out-of-order after a subscription change, the new symbol's history
+      // response could race against leaked old-symbol ticks, leaving the
+      // chart with only a handful of fresh live ticks (the "starts from 0"
+      // symptom seen on BTC/USD).
+      //
+      // The cleanupSubscriptions() above fires forget_all but does NOT await
+      // it (the unsubscribe closures are fire-and-forget). Awaiting here
+      // guarantees the server has acknowledged termination before we proceed.
+      try {
+        await Promise.all([
+          api.forgetAll("ticks").catch(() => undefined),
+          api.forgetAll("candles").catch(() => undefined),
+        ])
+      } catch {
+        // Non-fatal: if forget_all fails the store-layer symbol guard in
+        // tradingStore.setCurrentTick/setCurrentOHLC will still drop any
+        // stale cross-symbol ticks.
+      }
+
+      // Wait a tiny bit to ensure WebSocket state fully settles after unsubscribe
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Check if we're still loading the same symbol
@@ -297,8 +325,6 @@ function Home() {
       // setOHLCHistory([])
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      const api = getDerivAPI()
-      
       try {
         // Fetch appropriate history based on chart style
         if (chartStyle === 'area' || chartStyle === 'line') {
