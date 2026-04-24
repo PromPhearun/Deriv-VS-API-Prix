@@ -222,18 +222,20 @@ export const useTradingStore = create<TradingState>()(
   },
 
   setTickHistory: (history) => {
-    // ✅ STRICT SYMBOL GUARD:
-    // Only accept a bulk history write whose ticks match the current symbol.
-    // If an older, in-flight getTickHistory() response arrives after the user
-    // has already switched symbol, this guard prevents it from overwriting
-    // the new symbol's chart with stale data.
-    const state = get()
+    // NOTE: A previous version of this function hard-dropped bulk history
+    // whose symbol didn't match the store's `currentSymbol`. That was too
+    // aggressive — zustand/persist rehydration and OAuth-reconnect timing
+    // can legitimately make the two disagree for a brief window, which
+    // caused the chart to be stuck empty after a symbol switch.
+    //
+    // The correct behaviour is: **the bulk writer wins**. Whatever symbol
+    // the fresh history is for, make that the current symbol so the UI
+    // and the data stay in sync. Stale per-tick leakage is still blocked
+    // by the guard in `setCurrentTick` below.
     if (history.length > 0) {
       const firstSymbol = history[0]?.symbol
-      if (firstSymbol && firstSymbol !== state.currentSymbol) {
-        console.warn(
-          `[tradingStore] Dropping stale tick history for ${firstSymbol} (current is ${state.currentSymbol})`
-        )
+      if (firstSymbol && firstSymbol !== get().currentSymbol) {
+        set({ tickHistory: history, currentSymbol: firstSymbol })
         return
       }
     }
@@ -300,7 +302,21 @@ export const useTradingStore = create<TradingState>()(
     set({ ohlcHistory: newHistory })
   },
 
-  setOHLCHistory: (history) => set({ ohlcHistory: history }),
+  setOHLCHistory: (history) => {
+    // Mirror of setTickHistory: bulk writer wins. If the new OHLC history
+    // is for a different symbol than the store thinks is current, reconcile
+    // so the UI and data remain consistent. This prevents the "empty chart"
+    // state where a persisted symbol differs from the initial currentSymbol
+    // at rehydration time.
+    if (history.length > 0) {
+      const firstSymbol = history[0]?.symbol
+      if (firstSymbol && firstSymbol !== get().currentSymbol) {
+        set({ ohlcHistory: history, currentSymbol: firstSymbol })
+        return
+      }
+    }
+    set({ ohlcHistory: history })
+  },
 
   setChartStyle: (style) => {
     // NOTE: We intentionally do NOT wipe tickHistory/ohlcHistory here.

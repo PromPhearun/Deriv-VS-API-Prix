@@ -467,26 +467,27 @@ class DerivAPI {
       // Clean up existing subscriptions first
       try { await this.forgetAll('ticks') } catch (e) { /* ignore */ }
       try { await this.forgetAll('candles') } catch (e) { /* ignore */ }
-      
-      // Resubscribe to ticks and OHLC
-      const subscriptionsToRestore = Array.from(this.activeSubscriptions.entries())
-      
-      for (const [, sub] of subscriptionsToRestore) {
-        // Only resubscribe to market data (ticks/ohlc) to fix chart freeze
-        if (sub.type === 'ticks') {
-          const { symbol } = sub.params
-          if (symbol) {
-             console.log(`[DerivAPI] Restoring tick subscription for ${symbol}`)
-             await this.subscribeTicks(symbol, sub.callback as any)
-          }
-        } else if (sub.type === 'ohlc') {
-          const { symbol, granularity } = sub.params
-          if (symbol && granularity) {
-             console.log(`[DerivAPI] Restoring OHLC subscription for ${symbol}`)
-             await this.subscribeOHLC(symbol, granularity, sub.callback as any)
-          }
-        }
-      }
+
+      // ⚠️ IMPORTANT: We intentionally no longer re-subscribe to ticks/OHLC
+      // here. The UI layer (Home.tsx) listens for the `account_connected`
+      // window event and does a full re-subscribe keyed to the CURRENT
+      // symbol the user is viewing. Re-subscribing from this layer using
+      // the stale entries in `activeSubscriptions` was the cause of zombie
+      // subscriptions for PREVIOUS symbols (e.g. re-subscribing to
+      // cryBTCUSD after the user had already moved to R_100), which then
+      // fought against Home.tsx's own subscribe path and left the chart
+      // empty.
+      //
+      // Non-market-data subscriptions (e.g. balance) are restored by their
+      // owning contexts (AccountContext) and do NOT live in this map, so
+      // this change is safe.
+      //
+      // We still drop any market-data entries from the tracking map so
+      // future consumers of `activeSubscriptions` don't see stale data.
+      const marketDataKeys = Array.from(this.activeSubscriptions.entries())
+        .filter(([, sub]) => sub.type === "ticks" || sub.type === "ohlc")
+        .map(([k]) => k)
+      for (const k of marketDataKeys) this.activeSubscriptions.delete(k)
     } catch (error) {
       console.error("[DerivAPI] Error restoring subscriptions:", error)
     }
