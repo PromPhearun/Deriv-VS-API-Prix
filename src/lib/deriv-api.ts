@@ -691,13 +691,6 @@ class DerivAPI {
 
     console.log(`[DerivAPI] ✅ Successfully terminated ${type} subscriptions:`, result)
 
-    // Reset stream state after successful termination
-    if (type === 'ticks') {
-      this.handlers.delete("tick")
-    } else if (type === 'candles') {
-      this.handlers.delete("ohlc")
-    }
-
     return result
   }
 
