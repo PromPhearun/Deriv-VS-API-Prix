@@ -586,6 +586,10 @@ function SurfTheWavesContent() {
       // Do not manually end real account trades, let the contract update handle it
       const isConnectedDemo = localStorage.getItem("deriv_access_token") && localStorage.getItem("deriv_access_token") !== "null";
       if ((accountType === "real" || (accountType === "demo" && isConnectedDemo)) && currentSession.contractId) {
+        const api = getDerivAPI()
+        api.sellContract(Number(currentSession.contractId)).catch(err => {
+          console.error("[SurfTheWaves] Failed to sell contract early:", err)
+        })
         return
       }
 
