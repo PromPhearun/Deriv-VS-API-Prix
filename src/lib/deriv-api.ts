@@ -1238,6 +1238,7 @@ class DerivAPI {
         underlying_symbol: symbolValue,
         req_id: reqId,
         ...(params.barrier && { barrier: params.barrier }),
+        ...(params.multiplier && { multiplier: params.multiplier }),
       }
 
       console.log("[DerivAPI] Sending proposal request:", request)
