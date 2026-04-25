@@ -115,32 +115,14 @@ export default function ActiveContractsPanel() {
       
       console.log("[ActiveContracts] Contract sold:", result)
       
-      // Add to recent trades
-      if (contract) {
-        addRecentTrade({
-          app_id: import.meta.env.VITE_DERIV_APP_ID || "1089",
-          buy_price: contract.buy_price || 0,
-          contract_id: contractId,
-          contract_type: contract.contract_type,
-          currency: contract.currency || "USD",
-          date_expiry: contract.date_expiry || 0,
-          date_start: contract.date_start || 0,
-          longcode: contract.longcode || "",
-          payout: contract.payout || 0,
-          profit: contract.profit || 0,
-          sell_price: result.sold_for || contract.bid_price || 0,
-          sell_time: Date.now() / 1000,
-          shortcode: contract.shortcode || "",
-          transaction_id: result.transaction_id || contract.transaction_ids?.buy || 0,
-          entry_tick: contract.entry_spot,
-          exit_tick: contract.current_spot,
-          entry_tick_display_value: contract.entry_spot_display_value,
-          exit_tick_display_value: contract.current_spot_display_value,
-        })
-      }
-      
-      // Remove from active contracts
-      removeActiveContract(contractId)
+      // For real contracts, we intentionally do NOT manually call addRecentTrade 
+      // or removeActiveContract here.
+      // The TradingPanel.tsx component has an active `subscribeProposalOpenContract` 
+      // stream for this contract. When this sell request completes, the Deriv API 
+      // pushes a final update where `is_sold === 1`. 
+      // The subscription listener catches that update, automatically adds the trade 
+      // to history, removes it from active contracts, and unsubscribes itself.
+      // Doing it here manually causes a race condition leading to duplicate history entries.
     } catch (error) {
       console.error("[ActiveContracts] Failed to sell contract:", error)
       alert("Failed to sell contract. Please try again.")
