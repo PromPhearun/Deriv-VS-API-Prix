@@ -546,7 +546,7 @@ const TradingPanel: React.FC = () => {
           const params: TradeParams = {
             symbol: currentSymbol,
             amount: parseFloat(amount),
-            basis: contractCategory === "MULTIPLIERS" ? "multiplier" : "stake",
+            basis: "stake",
             contract_type: contractType,
             currency: "USD",
             ...(contractCategory !== "MULTIPLIERS" && {
