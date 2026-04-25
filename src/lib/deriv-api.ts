@@ -1220,14 +1220,15 @@ class DerivAPI {
 
       const symbolValue = typeof params.symbol === 'object' ? (params.symbol as any)?.symbol : params.symbol
 
+      const isMultiplier = params.contract_type === "MULTUP" || params.contract_type === "MULTDOWN"
+
       const request = {
         proposal: 1,
         amount: params.amount,
         basis: params.basis,
         contract_type: params.contract_type,
         currency: params.currency || "USD",
-        duration: params.duration,
-        duration_unit: params.duration_unit,
+        ...(!isMultiplier && { duration: params.duration, duration_unit: params.duration_unit }),
         underlying_symbol: symbolValue,
         req_id: reqId,
         ...(params.barrier && { barrier: params.barrier }),

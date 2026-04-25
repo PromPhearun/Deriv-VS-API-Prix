@@ -117,7 +117,7 @@ const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) =
         const isReady = await api.waitUntilReady(5000)
         if (!isReady) throw new Error("API not ready")
 
-        const params: TradeParams = {
+        let params: TradeParams = {
           symbol: currentSymbol,
           amount: tradeAmount,
           basis: "stake",
@@ -126,26 +126,54 @@ const GhostTradingPanel: React.FC<GhostTradingPanelProps> = ({ onTradeStart }) =
           duration_unit: durationUnit,
           currency: "USD",
         }
-        
-        const proposal = await api.getProposal(params)
+
+        let proposal
+        let actualContractType = contractType
+
+        try {
+          proposal = await api.getProposal(params)
+        } catch (error) {
+          console.warn("[GhostTradingPanel] Standard options failed, falling back to Multipliers", error)
+          actualContractType = contractType === "CALL" ? "MULTUP" : "MULTDOWN"
+          params = {
+            symbol: currentSymbol,
+            amount: tradeAmount,
+            basis: "stake",
+            contract_type: actualContractType,
+            multiplier: 100, // Use multiplier 100 as default for multipliers
+            currency: "USD",
+          }
+          proposal = await api.getProposal(params)
+        }
+
         const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
-        
+
         if (buyResult?.contract_id) {
           refreshBalance()
           const tradeId = `ghost-${buyResult.contract_id}`
-          
+
           addGhostTrade({
             id: tradeId,
             symbol: currentSymbol,
-            contractType,
+            contractType: actualContractType,
             amount: tradeAmount,
             entryPrice: currentTick.quote,
             duration: parseInt(duration),
             durationUnit,
           })
 
+          let autoSellTimeout: ReturnType<typeof setTimeout>
+          if (actualContractType.startsWith("MULT")) {
+             // For multipliers, auto-sell after the intended duration
+             const durationSeconds = durationUnit === 'm' ? parseInt(duration) * 60 : parseInt(duration)
+             autoSellTimeout = setTimeout(() => {
+                api.sellContract(buyResult.contract_id!, 0).catch(console.error)
+             }, durationSeconds * 1000)
+          }
+
           api.subscribeProposalOpenContract(buyResult.contract_id, (contract) => {
             if (contract.is_sold === 1 || contract.status === "sold") {
+              if (autoSellTimeout) clearTimeout(autoSellTimeout)
               const profit = contract.profit || 0
               settleGhostTrade(
                 tradeId,

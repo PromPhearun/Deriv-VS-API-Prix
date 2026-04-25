@@ -500,19 +500,37 @@ function SurfTheWavesContent() {
           const isReady = await api.waitUntilReady(5000)
           if (!isReady) throw new Error("API not ready")
 
-          const params = {
+          let params: any = {
             symbol: currentSymbol,
             amount: setup.stake,
             basis: "stake" as const,
-            contract_type: setup.prediction === "UP" ? "CALL" as const : "PUT" as const,
+            contract_type: setup.prediction === "UP" ? "CALL" : "PUT",
             duration: setup.duration,
             duration_unit: "s" as const,
             currency: "USD",
           }
-          
-          const proposal = await api.getProposal(params)
+
+          let proposal
+          let actualContractType = params.contract_type
+
+          try {
+            proposal = await api.getProposal(params)
+          } catch (error) {
+            console.warn("[SurfTheWaves] Standard options failed, falling back to Multipliers", error)
+            actualContractType = setup.prediction === "UP" ? "MULTUP" : "MULTDOWN"
+            params = {
+              symbol: currentSymbol,
+              amount: setup.stake,
+              basis: "stake" as const,
+              contract_type: actualContractType,
+              multiplier: 100, // Use multiplier 100 as default
+              currency: "USD",
+            }
+            proposal = await api.getProposal(params)
+          }
+
           const buyResult = await api.buyContract(proposal.id, proposal.ask_price)
-          
+
           if (buyResult?.contract_id) {
             const isConnectedDemo = localStorage.getItem("deriv_access_token") && localStorage.getItem("deriv_access_token") !== "null";
             if (accountType === "demo" && !isConnectedDemo) {
@@ -525,13 +543,22 @@ function SurfTheWavesContent() {
               targetDuration: setup.duration
             })
             
+            let autoSellTimeout: ReturnType<typeof setTimeout>
+            if (actualContractType.startsWith("MULT")) {
+                // For multipliers, auto-sell after the intended duration
+                autoSellTimeout = setTimeout(() => {
+                   api.sellContract(buyResult.contract_id!, 0).catch(console.error)
+                }, setup.duration * 1000)
+            }
+
               api.subscribeProposalOpenContract(buyResult.contract_id, (contract) => {
                 if (contract.is_sold === 1 || contract.status === "sold") {
+                  if (autoSellTimeout) clearTimeout(autoSellTimeout)
                   const profit = contract.profit || 0
-                  
+
                   // Wrap in a short timeout to allow the backend balance to update before fetching
                   setTimeout(() => refreshBalance(), 500)
-                  
+
                   endSession(
                     `surf-${buyResult.contract_id}`,
                     contract.sell_spot || contract.current_spot || 0,
