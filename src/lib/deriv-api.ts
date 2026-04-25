@@ -41,6 +41,7 @@ interface ActiveSubscription {
 class DerivAPI {
   private ws: WebSocket | null = null
   private publicWs: WebSocket | null = null // Separate public WS for market data (contracts_for, active_symbols)
+  private publicWsPromise: Promise<WebSocket> | null = null // Promise for public WS connection
   private currentWsUrl: string = WS_PUBLIC_URL
   private handlers: Map<string, MessageHandler[]> = new Map()
   private reqId: number = 0
@@ -143,7 +144,11 @@ class DerivAPI {
       return this.publicWs
     }
 
-    return new Promise((resolve, reject) => {
+    if (this.publicWsPromise) {
+      return this.publicWsPromise
+    }
+
+    this.publicWsPromise = new Promise((resolve, reject) => {
       console.log("[DerivAPI] Connecting public WS for market data...")
       this.publicWs = new WebSocket(WS_PUBLIC_URL)
 
@@ -177,16 +182,25 @@ class DerivAPI {
 
       this.publicWs.onerror = (error) => {
         console.error("[DerivAPI] Public WS error:", error)
+        this.publicWsPromise = null
         reject(error)
       }
 
       this.publicWs.onclose = () => {
         console.log("[DerivAPI] Public WS closed")
         this.publicWs = null
+        this.publicWsPromise = null
       }
 
-      setTimeout(() => reject(new Error("Public WS connection timeout")), 10000)
+      setTimeout(() => {
+        if (this.publicWs?.readyState !== WebSocket.OPEN) {
+          this.publicWsPromise = null
+          reject(new Error("Public WS connection timeout"))
+        }
+      }, 10000)
     })
+
+    return this.publicWsPromise
   }
 
   /**
@@ -2111,6 +2125,7 @@ class DerivAPI {
         this.publicWs.close()
       }
       this.publicWs = null
+      this.publicWsPromise = null
     }
 
     this.isConnecting = false
