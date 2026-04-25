@@ -267,8 +267,13 @@ function MochiMotoContent() {
         setTickHistory(ticks)
         
         await subscribeToStream(symbolToLoad)
-      } catch (err) {
+      } catch (err: any) {
         console.error("[MochiMoto] Failed to switch symbol:", err)
+        if (err?.message?.includes('market is presently closed')) {
+          import('react-hot-toast').then(({ default: toast }) => {
+            toast.error(err.message || 'This market is presently closed.');
+          });
+        }
       } finally {
         if (loadingSymbolRef.current === symbolToLoad) {
           setIsSymbolLoading(false)

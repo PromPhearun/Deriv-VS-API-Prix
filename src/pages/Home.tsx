@@ -365,8 +365,13 @@ function Home() {
         
          // Subscribe to the correct stream for the new symbol
         await subscribeToStream(symbolToLoad, chartStyle)
-      } catch (err) {
+      } catch (err: any) {
         console.error("[Home] Failed to switch symbol:", err)
+        if (err?.message?.includes('market is presently closed')) {
+          import('react-hot-toast').then(({ default: toast }) => {
+            toast.error(err.message || 'This market is presently closed.');
+          });
+        }
       } finally {
         if (loadingSymbolRef.current === symbolToLoad) {
           setIsSymbolLoading(false)
