@@ -994,7 +994,8 @@ class DerivAPI {
       return () => {
         this.off("tick", handler)
         this.activeSubscriptions.delete(subscriptionKey)
-        this.forgetAll("ticks")
+        // Fire and forget, don't wait or clear anything else
+        this.forgetAll("ticks").catch(() => undefined)
       }
     } finally {
       // ✅ MUTEX: Release lock
@@ -1013,8 +1014,8 @@ class DerivAPI {
       this.activeSubscriptions.delete(key)
     })
 
-    // Send forget_all to the API
-    await this.forgetAll("ticks")
+    // Send forget_all to the API without awaiting
+    this.forgetAll("ticks").catch(() => undefined)
   }
 
   async subscribeOHLC(symbol: string, granularity: number, callback: (ohlc: OHLCStream["ohlc"]) => void): Promise<() => void> {
@@ -1086,7 +1087,7 @@ class DerivAPI {
       return () => {
         this.off("ohlc", handler)
         this.activeSubscriptions.delete(subscriptionKey)
-        this.forgetAll("candles")
+        this.forgetAll("candles").catch(() => undefined)
       }
     } finally {
       // ✅ MUTEX: Release lock
@@ -1104,8 +1105,8 @@ class DerivAPI {
       this.activeSubscriptions.delete(key)
     })
 
-    // Send forget_all to the API
-    await this.forgetAll("candles")
+    // Send forget_all to the API without awaiting
+    this.forgetAll("candles").catch(() => undefined)
   }
 
   // Unsubscribe from all streams (ticks and OHLC)

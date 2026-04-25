@@ -158,9 +158,12 @@ function Home() {
       ohlcUnsubscribeRef.current = null
     }
     activeStreamRef.current = null
-    // Clear handlers directly instead of calling unsubscribeAll (avoid deadlock)
-    const api = getDerivAPI()
-    api.clearAllHandlers()
+    // DO NOT clear handlers directly here.
+    // The unsubscribe functions (called above) specifically remove their own handlers via this.off().
+    // Calling api.clearAllHandlers() blindly wipes out the NEW subscription's handler
+    // if the new stream was already started by a concurrent effect.
+    // const api = getDerivAPI()
+    // api.clearAllHandlers()
   }, [])
 
   const initializeAPI = useCallback(async () => {
