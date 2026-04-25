@@ -233,7 +233,9 @@ export default function ActiveContractsPanel() {
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs">Payout</p>
-                    <p className="font-semibold tabular-nums">${Number(contract.payout).toFixed(2)}</p>
+                    <p className="font-semibold tabular-nums">
+                      {contract.payout && !isNaN(Number(contract.payout)) ? `$${Number(contract.payout).toFixed(2)}` : "-"}
+                    </p>
                   </div>
                 </div>
 
