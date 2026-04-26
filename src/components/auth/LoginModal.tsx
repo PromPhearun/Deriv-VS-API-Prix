@@ -73,7 +73,7 @@ export function LoginModal() {
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-2xl font-bold text-primary">Welcome to PROMO Trade</CardTitle>
           <CardDescription>
-            Please choose how you would like to continue.
+            Please log in with your Deriv Account to continue.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
