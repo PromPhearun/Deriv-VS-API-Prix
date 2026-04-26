@@ -288,7 +288,7 @@ export type DerivMessage =
   | { error: { code: string; message: string; details?: any } }
 
 // Trading Types
-export type ContractType = "CALL" | "PUT" | "RISE" | "FALL" | "ONETOUCH" | "NOTOUCH" | "MULTUP" | "MULTDOWN"
+export type ContractType = "CALL" | "PUT" | "RISE" | "FALL" | "ONETOUCH" | "NOTOUCH" | "MULTUP" | "MULTDOWN" | "HIGHER" | "LOWER"
 export type Basis = "stake" | "payout" | "multiplier"
 export type DurationUnit = "t" | "s" | "m" | "h" | "d"
 

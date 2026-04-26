@@ -547,7 +547,7 @@ const TradingPanel: React.FC = () => {
             symbol: currentSymbol,
             amount: parseFloat(amount),
             basis: "stake",
-            contract_type: contractType,
+            contract_type: contractCategory === "HIGHER_LOWER" ? (contractType === "CALL" ? "HIGHER" : "LOWER") : contractType,
             currency: "USD",
             ...(contractCategory !== "MULTIPLIERS" && {
               duration: parseInt(duration),
