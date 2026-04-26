@@ -19,9 +19,28 @@ class SoundManager {
       this.masterGain = this.audioContext.createGain()
       this.masterGain.connect(this.audioContext.destination)
       this.masterGain.gain.value = this.volume
+      this.setupInteractionUnlock()
     } catch (err) {
       console.warn("[SoundManager] Web Audio API not available:", err)
     }
+  }
+
+  private setupInteractionUnlock() {
+    const unlock = () => {
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        this.audioContext.resume().then(() => {
+          console.log("[SoundManager] AudioContext unlocked successfully")
+        })
+      }
+      // Remove listeners once unlocked
+      document.removeEventListener('click', unlock)
+      document.removeEventListener('keydown', unlock)
+      document.removeEventListener('touchstart', unlock)
+    }
+
+    document.addEventListener('click', unlock)
+    document.addEventListener('keydown', unlock)
+    document.addEventListener('touchstart', unlock)
   }
 
   private ensureContext() {
@@ -74,14 +93,35 @@ class SoundManager {
       source.connect(gain)
       gain.connect(this.masterGain!)
 
-      audio.play().then(() => {
-        console.log("[SoundManager] Ocean ambient started successfully")
-      }).catch(err => {
-        console.warn("[SoundManager] Autoplay prevented for ocean ambient:", err)
-      })
+      let cleanupDone = false;
+
+      const playAudio = () => {
+        if (cleanupDone) return;
+        audio.play().then(() => {
+          console.log("[SoundManager] Ocean ambient started successfully")
+        }).catch(err => {
+          console.warn("[SoundManager] Autoplay prevented for ocean ambient:", err)
+          // Retry on first interaction
+          const retryPlay = () => {
+            if (cleanupDone) return;
+            audio.play().then(() => {
+              console.log("[SoundManager] Ocean ambient started successfully on retry")
+            }).catch(console.warn);
+            document.removeEventListener('click', retryPlay);
+            document.removeEventListener('keydown', retryPlay);
+            document.removeEventListener('touchstart', retryPlay);
+          };
+          document.addEventListener('click', retryPlay);
+          document.addEventListener('keydown', retryPlay);
+          document.addEventListener('touchstart', retryPlay);
+        })
+      };
+
+      playAudio();
 
       // Return cleanup function
       return () => {
+        cleanupDone = true;
         try {
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
           setTimeout(() => {

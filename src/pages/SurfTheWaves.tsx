@@ -418,40 +418,13 @@ function SurfTheWavesContent() {
     // Attempt to start immediately
     startAmbient()
 
-    // Browsers block autoplay without interaction. 
-    // Listen to user interaction events to start audio context.
-    const handleInteraction = () => {
-      startAmbient()
-      window.removeEventListener('click', handleInteraction)
-      window.removeEventListener('keydown', handleInteraction)
-    }
-
-    window.addEventListener('click', handleInteraction)
-    window.addEventListener('keydown', handleInteraction)
-
     return () => {
-      window.removeEventListener('click', handleInteraction)
-      window.removeEventListener('keydown', handleInteraction)
       if (oceanAmbientCleanupRef.current) {
         oceanAmbientCleanupRef.current()
         oceanAmbientCleanupRef.current = null
       }
     }
   }, [soundEnabled])
-
-  // Explicitly resume audio context when user interacts with Start button
-  useEffect(() => {
-    const handleStartClick = () => {
-      const soundMgr = getSoundManager()
-      // @ts-ignore - accessing private member for utility
-      if (soundMgr.audioContext?.state === 'suspended') {
-        // @ts-ignore
-        soundMgr.audioContext.resume()
-      }
-    }
-    window.addEventListener('click', handleStartClick)
-    return () => window.removeEventListener('click', handleStartClick)
-  }, [])
 
   // Sound effects for whoosh, and wave crashes during session
   useEffect(() => {
