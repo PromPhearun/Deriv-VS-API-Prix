@@ -387,12 +387,7 @@ export const useTradingStore = create<TradingState>()(
       const allSymbols = await api.getActiveSymbols()
 
       // Ensure that we include cryptocurrencies properly and default the market name if missing
-      // Filter out some problematic symbols that don't load ticks
-      const validSymbols = allSymbols.filter(sym => 
-        !sym.symbol.startsWith('OTC_')
-      );
-      
-      const enhancedSymbols = validSymbols.map(sym => ({
+      const enhancedSymbols = allSymbols.map(sym => ({
         ...sym,
         market_display_name: sym.market_display_name || (
           sym.symbol.startsWith('BTC') || sym.symbol.startsWith('ETH') || sym.symbol.includes('CRYPTO') ? 'Cryptocurrencies' : 'Other Assets'
