@@ -510,7 +510,7 @@ class SoundManager {
       osc1.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1)
       
       gain1.gain.setValueAtTime(0, ctx.currentTime)
-      gain1.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.02) // Quick attack
+      gain1.gain.linearRampToValueAtTime(1.2, ctx.currentTime + 0.02) // Quick attack
       gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1) // Quick decay
 
       osc1.connect(gain1)
@@ -528,7 +528,7 @@ class SoundManager {
       osc2.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3)
       
       gain2.gain.setValueAtTime(0, ctx.currentTime + 0.2)
-      gain2.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.22) // Quick attack
+      gain2.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 0.22) // Quick attack
       gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3) // Quick decay
 
       osc2.connect(gain2)

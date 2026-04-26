@@ -29,7 +29,7 @@ import { useState } from "react"
 
 function Home() {
   const { isConnected, isConnecting } = useAccount()
-  const [isSoundEnabled, setIsSoundEnabled] = useState(false)
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true)
 
   const {
     symbols,
