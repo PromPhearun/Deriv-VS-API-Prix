@@ -35,6 +35,17 @@
 - **Components**: Button, Card, Input, Select
 - **Responsive**: Mobile-first, fat-finger friendly
 
+### Phase 6: Gamification, Loyalty & Rewards System (Completed)
+- **Deriv Rewards Points**: Implementation of the `DerivPoints` component to track and reward user engagement and trading activity.
+- **Deriv Gift Cards**: Integration of `DerivGiftCard` allowing users to redeem or interact with gift cards within the trading ecosystem.
+- **Mini-Games**: Mochi Moto & Surf The Waves (which tie perfectly into a gamified loyalty system).
+
+### Phase 7: AI, Social & Advanced Features (Completed)
+- **AI Integration**: `AIAssistant` and `aiStore` for intelligent trading insights.
+- **Ghost Trading**: Integration of `GhostTradingPanel`, `BubuMascot`, and `DuduMascot`.
+- **Social**: `SocialTrading` feature implementation.
+- **Advanced Tools**: `StopLossTakeProfitModal`, `AlertSystem`, `Watchlist`, and Technical Indicators (`technicalIndicators.ts`, `patternDetection.ts`).
+
 ## Technical Decisions
 
 ### Why Vite over Next.js?
@@ -1180,17 +1191,17 @@ const simulateDemoTrade = useCallback((contractType: ContractType): Promise<void
 
 ## Future Enhancements
 1. ~~Full OAuth 2.0 flow with Deriv~~ ✅ Implemented (V2 PKCE OAuth + OTP WebSocket)
-2. Advanced strategies with backtesting
+2. Advanced strategies with backtesting (Ongoing with strategyStore and patternDetection)
 3. Mobile app (React Native)
-4. Social features
+4. ~~Social features~~ ✅ Implemented (SocialTrading component)
 
 ## Metrics
 - **Dev Time**: ~2 hours initial + ongoing iterations
-- **Lines of Code**: ~5000+
-- **Components**: 25+
+- **Lines of Code**: ~8000+
+- **Components**: 40+
 - **API Endpoints**: 12+
 - **Build Size**: 785KB (235KB gzipped)
 
 ---
-*Last Updated: April 16, 2026*
+*Last Updated: April 26, 2026*
 *PROMO Trade Team - Deriv API Grand Prix*
