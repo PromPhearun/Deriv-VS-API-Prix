@@ -24,9 +24,9 @@ interface AccountContextType extends AccountInfo {
   refreshBalance: () => Promise<void>
 }
 
-const DEMO_BALANCE = 10000
-const DEMO_CURRENCY = "USD"
-const DEMO_LOGIN_ID = "Demo Account"
+const DEMO_BALANCE = 0
+const DEMO_CURRENCY = ""
+const DEMO_LOGIN_ID = null
 
 const AccountContext = createContext<AccountContextType | null>(null)
 
@@ -67,15 +67,17 @@ export function AccountProvider({ children }: AccountProviderProps) {
     // Switch back to demo
     localStorage.setItem("account_type", "demo")
     localStorage.removeItem("deriv_access_token")
+    sessionStorage.removeItem("has_chosen_login")
     setAccountInfo({
       accountType: "demo",
-      balance: DEMO_BALANCE,
-      currency: DEMO_CURRENCY,
-      loginId: DEMO_LOGIN_ID,
+      balance: 0,
+      currency: "",
+      loginId: null,
       isConnected: false,
       isConnecting: false,
       accessToken: null,
     })
+    window.dispatchEvent(new Event('show_login_modal'))
   }, [])
 
   const handleAuthorize = useCallback((data: any) => {
@@ -349,10 +351,11 @@ export function AccountProvider({ children }: AccountProviderProps) {
       // No token fallback
       if (type === "demo") {
         return {
+          ...prev,
           accountType: "demo",
-          balance: DEMO_BALANCE,
-          currency: DEMO_CURRENCY,
-          loginId: DEMO_LOGIN_ID,
+          balance: 0,
+          currency: "",
+          loginId: null,
           isConnected: false,
           isConnecting: false,
           accessToken: null,
@@ -407,12 +410,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
   }, [accountInfo.accountType, accountInfo.isConnected])
 
   const resetBalance = useCallback(async () => {
-    // If not connected to a real/demo API session, just reset local state
+    // If not connected to a real/demo API session, just return
     if (!accountInfo.isConnected || !accountInfo.accessToken || !accountInfo.loginId) {
-      setAccountInfo((prev) => ({
-        ...prev,
-        balance: DEMO_BALANCE,
-      }))
       return
     }
 
@@ -427,11 +426,6 @@ export function AccountProvider({ children }: AccountProviderProps) {
       }
     } catch (err) {
       console.error("[AccountContext] Failed to reset demo balance:", err)
-      // Fallback to local reset if API fails
-      setAccountInfo((prev) => ({
-        ...prev,
-        balance: DEMO_BALANCE,
-      }))
     }
   }, [accountInfo.accountType, accountInfo.accessToken, accountInfo.isConnected, accountInfo.loginId, refreshBalance])
 

@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
-import { ShieldCheck, User, Loader2 } from 'lucide-react'
-import { useAccount } from '../../contexts/AccountContext'
+import { ShieldCheck, Loader2 } from 'lucide-react'
 
 export function LoginModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const { disconnect } = useAccount()
 
   useEffect(() => {
     // Check if user has already chosen a login method
@@ -24,13 +22,14 @@ export function LoginModal() {
       // If it is a callback, mark as chosen so it doesn't pop up again
       sessionStorage.setItem('has_chosen_login', 'true')
     }
-  }, [])
 
-  const handleGuestLogin = () => {
-    disconnect()
-    sessionStorage.setItem('has_chosen_login', 'true')
-    setIsOpen(false)
-  }
+    const handleShowModal = () => setIsOpen(true)
+    window.addEventListener('show_login_modal', handleShowModal)
+
+    return () => {
+      window.removeEventListener('show_login_modal', handleShowModal)
+    }
+  }, [])
 
   const handleDerivLogin = async () => {
     setIsConnecting(true)
@@ -91,28 +90,6 @@ export function LoginModal() {
             Log in with Deriv Account
           </Button>
           
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
-
-          <Button 
-            variant="outline" 
-            className="w-full h-14 text-lg gap-3" 
-            onClick={handleGuestLogin}
-            disabled={isConnecting}
-          >
-            <User className="h-5 w-5" />
-            Log in as a guest
-          </Button>
-          
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            You can always switch between accounts later from the top-right menu.
-          </p>
         </CardContent>
       </Card>
     </div>
