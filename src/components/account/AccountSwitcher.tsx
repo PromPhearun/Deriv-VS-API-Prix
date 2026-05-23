@@ -216,7 +216,7 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
                   <p className="text-xs text-muted-foreground">
                     {isDemo ? "Demo Balance" : "Real Balance"}
                   </p>
-                  {isDemo && loginId && (
+                  {isDemo && (
                     <div className="relative flex items-center group">
                       <Button
                         variant="ghost"
@@ -234,7 +234,7 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
                   )}
                 </div>
                 <p className="text-lg font-bold">
-                  {loginId ? formatCurrency(balance, currency || "USD") : "0.00"}
+                  {isDemo || loginId ? formatCurrency(balance, currency || "USD") : "0.00"}
                 </p>
               </div>
             </div>
@@ -271,7 +271,7 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
             {isDemo ? (
               <p className="flex items-center gap-1.5">
                 <User className="h-3 w-3" />
-                {loginId ? `Demo Account: ${loginId}` : "Not connected"}
+                {loginId ? `Demo Account: ${loginId}` : "Mock Demo Account"}
               </p>
             ) : (
               <p className="flex items-center gap-1.5">

@@ -583,11 +583,13 @@ const TradingPanel: React.FC = () => {
         // Track contract result for real accounts
         if (buyResult?.contract_id) {
           // Fetch real balance immediately after purchase to deduct stake
-          api.getBalance().then((balanceRes) => {
-            if (balanceRes && balanceRes.balance !== undefined) {
-              updateBalance(Number(balanceRes.balance))
-            }
-          }).catch(console.error)
+          if (accountType !== "demo" || api.isReady()) {
+            api.getBalance().then((balanceRes) => {
+              if (balanceRes && balanceRes.balance !== undefined) {
+                updateBalance(Number(balanceRes.balance))
+              }
+            }).catch(console.error)
+          }
 
           // Store SL/TP if enabled
           const tp = isTakeProfitEnabled && takeProfitValue ? parseFloat(takeProfitValue) : undefined

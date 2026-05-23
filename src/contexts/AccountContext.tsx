@@ -24,8 +24,8 @@ interface AccountContextType extends AccountInfo {
   refreshBalance: () => Promise<void>
 }
 
-const DEMO_BALANCE = 0
-const DEMO_CURRENCY = ""
+const DEMO_BALANCE = 10000
+const DEMO_CURRENCY = "USD"
 const DEMO_LOGIN_ID = null
 
 const AccountContext = createContext<AccountContextType | null>(null)
@@ -49,8 +49,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
     const storedAccessToken = localStorage.getItem("deriv_access_token")
     return {
       accountType: storedAccountType || "demo",
-      balance: storedAccountType === "real" ? 0 : DEMO_BALANCE,
-      currency: storedAccountType === "real" ? "" : DEMO_CURRENCY,
+      balance: storedAccountType === "real" ? 0 : 10000,
+      currency: storedAccountType === "real" ? "" : "USD",
       loginId: storedAccountType === "real" ? null : DEMO_LOGIN_ID,
       isConnected: false,
       isConnecting: false,
@@ -70,14 +70,13 @@ export function AccountProvider({ children }: AccountProviderProps) {
     sessionStorage.removeItem("has_chosen_login")
     setAccountInfo({
       accountType: "demo",
-      balance: 0,
-      currency: "",
+      balance: 10000,
+      currency: "USD",
       loginId: null,
       isConnected: false,
       isConnecting: false,
       accessToken: null,
     })
-    window.dispatchEvent(new Event('show_login_modal'))
   }, [])
 
   const handleAuthorize = useCallback((data: any) => {
@@ -353,8 +352,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
         return {
           ...prev,
           accountType: "demo",
-          balance: 0,
-          currency: "",
+          balance: prev.accountType === "demo" ? prev.balance : 10000, // Keep current balance if already demo
+          currency: "USD",
           loginId: null,
           isConnected: false,
           isConnecting: false,
@@ -371,10 +370,18 @@ export function AccountProvider({ children }: AccountProviderProps) {
   }, [])
 
   const updateBalance = useCallback((newBalance: number) => {
-    setAccountInfo((prev) => ({
-      ...prev,
-      balance: Math.max(0, newBalance), // Prevent negative balance
-    }))
+    setAccountInfo((prev) => {
+      // If we are in demo and disconnected, and someone tries to set it to 0 initially, prevent it
+      if (prev.accountType === "demo" && !prev.isConnected) {
+        if (newBalance === 0 && prev.balance === 10000) {
+          return prev;
+        }
+      }
+      return {
+        ...prev,
+        balance: Math.max(0, newBalance), // Prevent negative balance
+      }
+    })
   }, [])
 
   const addBalance = useCallback((amount: number) => {
@@ -406,19 +413,23 @@ export function AccountProvider({ children }: AccountProviderProps) {
       } catch (err) {
         console.error('[AccountContext] Failed to manually refresh balance', err)
       }
+    } else if (accountInfo.accountType === "demo") {
+      setAccountInfo(prev => ({ ...prev, balance: 10000 }))
     }
   }, [accountInfo.accountType, accountInfo.isConnected])
 
   const resetBalance = useCallback(async () => {
-    // If not connected to a real/demo API session, just return
-    if (!accountInfo.isConnected || !accountInfo.accessToken || !accountInfo.loginId) {
+    if (!accountInfo.isConnected) {
+      if (accountInfo.accountType === "demo") {
+        setAccountInfo(prev => ({ ...prev, balance: 10000 }))
+      }
       return
     }
 
     try {
       const api = getDerivAPI()
       // Only reset if it's a demo account and we have a token
-      if (accountInfo.accountType === "demo") {
+      if (accountInfo.accountType === "demo" && accountInfo.accessToken && accountInfo.loginId) {
         await api.resetDemoBalance(accountInfo.accessToken, accountInfo.loginId)
         
         // After reset, refresh the balance to get the accurate amount from server
