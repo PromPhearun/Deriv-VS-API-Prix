@@ -49,8 +49,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
     const storedAccessToken = localStorage.getItem("deriv_access_token")
     return {
       accountType: storedAccountType || "demo",
-      balance: storedAccountType === "real" ? 0 : 10000,
-      currency: storedAccountType === "real" ? "" : "USD",
+      balance: storedAccountType === "real" ? 0 : DEMO_BALANCE,
+      currency: storedAccountType === "real" ? "" : DEMO_CURRENCY,
       loginId: storedAccountType === "real" ? null : DEMO_LOGIN_ID,
       isConnected: false,
       isConnecting: false,
@@ -70,8 +70,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
     sessionStorage.removeItem("has_chosen_login")
     setAccountInfo({
       accountType: "demo",
-      balance: 10000,
-      currency: "USD",
+      balance: DEMO_BALANCE,
+      currency: DEMO_CURRENCY,
       loginId: null,
       isConnected: false,
       isConnecting: false,
