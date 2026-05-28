@@ -3,7 +3,7 @@ import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { useAccount } from "../../contexts/AccountContext"
 import { getDerivAPI } from "../../lib/deriv-api"
-import { Wallet, LogOut, User, ShieldCheck, Loader2, RotateCcw, ArrowDownToLine, ArrowUpFromLine } from "lucide-react"
+import { Wallet, User, ShieldCheck, Loader2, RotateCcw, ArrowDownToLine, ArrowUpFromLine } from "lucide-react"
 import { formatCurrency } from "../../lib/utils"
 import { cn } from "../../lib/utils"
 
@@ -12,7 +12,7 @@ interface AccountSwitcherProps {
 }
 
 const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
-  const { accountType, balance, currency, loginId, isConnecting, setAccountType, connectReal, disconnect, resetBalance } = useAccount()
+  const { accountType, balance, currency, loginId, connectReal, resetBalance } = useAccount()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
@@ -140,68 +140,10 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
     }
   }, [connectReal])
 
-  const handleConnectReal = useCallback(async () => {
-    setError(null)
-      const clientId = "32VnV8czGxufJh1E0GQUD" // V2 OAuth Client ID
-
-      console.log("[AccountSwitcher] Starting V2 PKCE OAuth flow...")
-      
-      try {
-        const { generatePKCEChallenge } = await import("../../lib/auth")
-        const pkce = await generatePKCEChallenge()
-        
-        sessionStorage.setItem("pkce_code_verifier", pkce.codeVerifier)
-        sessionStorage.setItem("oauth_state", pkce.state)
-
-        const authUrl = new URL("https://auth.deriv.com/oauth2/auth")
-        authUrl.searchParams.set("response_type", "code")
-        authUrl.searchParams.set("client_id", clientId)
-        
-        // Explicitly use Vercel URL as default for production
-        // NOTE: Ensure localhost:5173 is added to the dashboard for local development!
-        const redirectUri = window.location.hostname === "localhost"
-          ? "http://localhost:5173"
-          : "https://promotrades.vercel.app"
-          
-        authUrl.searchParams.set("redirect_uri", redirectUri)
-      authUrl.searchParams.set("scope", "trade")
-      authUrl.searchParams.set("state", pkce.state)
-      authUrl.searchParams.set("code_challenge", pkce.codeChallenge)
-      authUrl.searchParams.set("code_challenge_method", "S256")
-
-      console.log("[AccountSwitcher] Redirecting to:", authUrl.toString())
-      window.location.href = authUrl.toString()
-    } catch (err) {
-      console.error("[AccountSwitcher] Failed to start OAuth flow:", err)
-      setError("Failed to start authentication process. Please try again.")
-    }
-  }, [])
 
   return (
     <Card className={cn("w-full", className)}>
       <CardContent className="p-4">
-        {/* Account Type Toggle */}
-        <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4">
-          <Button
-            variant={isDemo ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setAccountType("demo")}
-            className="flex-1 text-xs gap-1.5"
-          >
-            <User className="h-3.5 w-3.5" />
-            Demo
-          </Button>
-          <Button
-            variant={!isDemo ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setAccountType("real")}
-            className="flex-1 text-xs gap-1.5"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Real
-          </Button>
-        </div>
-
         {/* Account Info */}
         <div className="space-y-3">
           {/* Balance Display */}
@@ -288,41 +230,6 @@ const AccountSwitcher: React.FC<AccountSwitcherProps> = ({ className }) => {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            {/* Show connect button only if NOT connected via token */}
-            {(!localStorage.getItem("deriv_access_token")) ? (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleConnectReal}
-                disabled={isConnecting}
-                className="w-full text-xs gap-1.5"
-              >
-                {isConnecting ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Connect to Deriv
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={disconnect}
-                className="w-full text-xs gap-1.5"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Disconnect/Log out
-              </Button>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>

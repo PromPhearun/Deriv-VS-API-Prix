@@ -1,12 +1,8 @@
-import { useAccount } from '../../contexts/AccountContext';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Gift, ExternalLink, Star } from 'lucide-react';
 
 const DerivGiftCard = () => {
-  const { accountType } = useAccount();
-  const isRealAccount = accountType === 'real';
-
   const handlePurchase = () => {
     // Open Deriv Cashier in a new tab
     window.open('https://app.deriv.com/cashier', '_blank');
@@ -67,18 +63,16 @@ const DerivGiftCard = () => {
             <div className="pt-2">
               <Button 
                 onClick={handlePurchase}
-                disabled={!isRealAccount}
-                className="w-full md:w-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all duration-200"
+                disabled={true}
+                className="w-full md:w-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all duration-200 opacity-50 cursor-not-allowed"
                 size="lg"
               >
                 Purchase Gift Card
                 <ExternalLink className="h-4 w-4 ml-2" />
               </Button>
-              {!isRealAccount && (
-                <p className="text-xs text-muted-foreground mt-2 text-center md:text-left">
-                  * Please switch to a real account to purchase.
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-2 text-center md:text-left">
+                * Gift card purchases are disabled due to regulatory compliance.
+              </p>
             </div>
           </div>
         </div>

@@ -44,24 +44,21 @@ interface AccountProviderProps {
 
 export function AccountProvider({ children }: AccountProviderProps) {
   const [accountInfo, setAccountInfo] = useState<AccountInfo>(() => {
-    // Check if user was previously connected to a real account
-    const storedAccountType = localStorage.getItem("account_type") as AccountType | null
-    const storedAccessToken = localStorage.getItem("deriv_access_token")
+    // Clear any residual tokens/types for security and regulatory compliance
+    localStorage.removeItem("deriv_access_token")
+    localStorage.removeItem("account_type")
     return {
-      accountType: storedAccountType || "demo",
-      balance: storedAccountType === "real" ? 0 : DEMO_BALANCE,
-      currency: storedAccountType === "real" ? "" : DEMO_CURRENCY,
-      loginId: storedAccountType === "real" ? null : DEMO_LOGIN_ID,
+      accountType: "demo",
+      balance: DEMO_BALANCE,
+      currency: DEMO_CURRENCY,
+      loginId: DEMO_LOGIN_ID,
       isConnected: false,
       isConnecting: false,
-      accessToken: storedAccessToken || null,
+      accessToken: null,
     }
   })
 
   const authorizeHandlerRef = useRef<((data: any) => void) | null>(null)
-  const isAuthenticatingRef = useRef<boolean>(false)
-  const authRetryCountRef = useRef<number>(0)
-  const MAX_AUTH_RETRIES = 3
 
   const disconnect = useCallback(() => {
     // Switch back to demo
@@ -91,214 +88,10 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }
   }, [])
 
-  const connectReal = useCallback(async (accessToken: string, targetType: AccountType = "demo") => {
-    // Prevent duplicate authentication attempts (race condition fix)
-    if (isAuthenticatingRef.current) {
-      console.log("[AccountContext] Authentication already in progress, skipping duplicate request")
-      return
-    }
-    
-    isAuthenticatingRef.current = true
-    console.log(`[AccountContext] Connecting ${targetType} account with OAuth...`)
-    
-    // Store access token
-    localStorage.setItem("deriv_access_token", accessToken)
-    setAccountInfo((prev) => ({
-      ...prev,
-      accountType: targetType,
-      accessToken,
-      isConnecting: true,
-    }))
-
-    if (!accessToken || accessToken === "undefined" || accessToken === "null") {
-      console.error("[AccountContext] Cannot connect real account: No valid access token provided")
-      localStorage.removeItem("deriv_access_token")
-      isAuthenticatingRef.current = false
-      setAccountInfo(prev => ({ ...prev, isConnecting: false, accountType: "demo", accessToken: null }))
-      return
-    }
-
-    // Retry logic with exponential backoff
-    let lastError: Error | null = null
-    
-    for (let attempt = 1; attempt <= MAX_AUTH_RETRIES; attempt++) {
-      try {
-        const api = getDerivAPI()
-        
-        // Step 1: Connect WebSocket
-        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Connecting WebSocket...`)
-        await api.initialize()
-        
-        // Wait for WebSocket to be fully ready before sending authorize
-        console.log(`[AccountContext] Waiting for WebSocket to stabilize...`)
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Step 2: Authenticate using OTP flow
-        console.log(`[AccountContext] Attempt ${attempt}/${MAX_AUTH_RETRIES} - Authenticating with OTP flow...`)
-        
-        // Ensure token is strictly a string
-        const tokenString = String(accessToken).trim()
-        
-        // 1. Fetch accounts to get an account_id
-        const accountsResponse = await fetch("https://api.derivws.com/trading/v1/options/accounts", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${tokenString}`,
-            "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089"
-          }
-        });
-        
-        if (!accountsResponse.ok) {
-          throw new Error(`Failed to fetch accounts: ${accountsResponse.statusText}`);
-        }
-        
-        const accountsData = await accountsResponse.json();
-        if (!accountsData.data || accountsData.data.length === 0) {
-          throw new Error("No accounts found for this user");
-        }
-        
-        // Find the correct real trading account (prefer CR + USD account)
-        // V2 API returns all accounts including crypto wallets (DOT, BTC, etc.)
-        console.log("[AccountContext] Available accounts:", accountsData.data.map((a: any) => ({
-          id: a.account_id, type: a.account_type, currency: a.currency, balance: a.balance
-        })));
-        
-        let selectedAccount;
-        if (targetType === "demo") {
-          selectedAccount = accountsData.data.find((a: any) => a.account_type === "demo" || a.account_id?.startsWith('VRTC')) || accountsData.data[0];
-        } else {
-          selectedAccount = 
-            // Priority 1: Non-demo account with USD currency
-            accountsData.data.find((a: any) => a.account_type !== "demo" && a.currency === 'USD') ||
-            // Priority 2: Non-demo account with USD-like currency (case insensitive)
-            accountsData.data.find((a: any) => a.account_type !== "demo" && a.currency?.toUpperCase() === 'USD') ||
-            // Priority 3: CR-prefixed account (legacy V1 format)
-            accountsData.data.find((a: any) => a.account_id?.startsWith('CR')) ||
-            // Priority 4: Any non-demo, non-virtual account
-            accountsData.data.find((a: any) => a.account_type !== "demo" && a.account_type !== "virtual") ||
-            // Priority 5: Any non-demo account
-            accountsData.data.find((a: any) => a.account_type !== "demo") ||
-            // Fallback: first account
-            accountsData.data[0];
-        }
-        const accountId = selectedAccount.account_id;
-        
-        console.log(`[AccountContext] Selected account ID: ${accountId} (currency: ${selectedAccount.currency}), requesting OTP...`);
-        
-        // 2. Request OTP for the account
-        const otpResponse = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${accountId}/otp`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${tokenString}`,
-            "Deriv-App-ID": import.meta.env.VITE_DERIV_APP_ID || "1089"
-          }
-        });
-        
-        if (!otpResponse.ok) {
-          throw new Error(`Failed to get OTP: ${otpResponse.statusText}`);
-        }
-        
-        const otpData = await otpResponse.json();
-        const otpUrl = otpData.data.url;
-        
-        console.log(`[AccountContext] Received OTP URL, connecting WebSocket...`);
-        
-        // 3. Connect WebSocket using OTP URL
-        await api.connectWithOTP(otpUrl);
-
-        // 3.5 Store credentials for OTP refresh on reconnect
-        api.storeCredentials(tokenString, accountId);
-
-        // 4. Restore active subscriptions (ticks/ohlc) after connection
-        api.restoreSubscriptions().catch(err => {
-          console.warn("[AccountContext] Failed to restore subscriptions:", err)
-        });
-        
-        // Trigger event so charts know connection changed
-        window.dispatchEvent(new CustomEvent('account_connected', { detail: { accountType: targetType } }))
-        
-        let accountLoginId = accountId
-        let accountBalance = Number(selectedAccount.balance) || 0
-        let accountCurrency = selectedAccount.currency || "USD"
-        
-        // Update state with connected account info
-        setAccountInfo((prev) => ({
-          ...prev,
-          accountType: targetType, // Ensure account type is set properly
-          balance: accountBalance,
-          currency: accountCurrency,
-          loginId: accountLoginId,
-          isConnected: true,
-          isConnecting: false,
-        }))
-        
-        console.log(`[AccountContext] ✅ State updated - ${targetType} account connected:`, {
-          loginId: accountLoginId,
-          balance: accountBalance,
-          currency: accountCurrency
-        })
-        
-        // Subscribe to balance updates to keep UI in sync with real-time changes
-        try {
-          console.log("[AccountContext] 📡 Subscribing to balance updates...")
-          api.subscribeBalance((balanceData) => {
-            console.log("[AccountContext] 💰 Balance update received:", balanceData)
-            setAccountInfo((prev) => ({
-              ...prev,
-              balance: Number(balanceData.balance) || 0,
-              currency: balanceData.currency || prev.currency,
-            }))
-          })
-          console.log("[AccountContext] ✅ Balance subscription active")
-        } catch (balanceError) {
-          console.warn("[AccountContext] ⚠️ Balance subscription failed (non-critical):", balanceError)
-          // Don't fail the authentication if balance subscription fails
-        }
-        
-        // Reset retry counter on success
-        authRetryCountRef.current = 0
-        isAuthenticatingRef.current = false
-        return
-        
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-        console.error(`[AccountContext] Authentication attempt ${attempt}/${MAX_AUTH_RETRIES} failed:`, error)
-        
-        // If this was the last attempt, give up
-        if (attempt === MAX_AUTH_RETRIES) {
-          console.error("[AccountContext] All authentication attempts failed, falling back to demo")
-          
-          // Clear stored token to prevent infinite retry loops
-          localStorage.removeItem("deriv_access_token")
-          
-          setAccountInfo((prev) => ({
-            ...prev,
-            isConnecting: false,
-            isConnected: false,
-          }))
-          
-          isAuthenticatingRef.current = false
-          authRetryCountRef.current = 0
-          
-          // Fallback to demo mode after max retries
-          setTimeout(() => {
-            disconnect()
-          }, 1000)
-          
-          throw new Error(`Authentication failed after ${MAX_AUTH_RETRIES} attempts: ${lastError.message}`)
-        }
-        
-        // Exponential backoff: 2s, 4s, 8s
-        const delay = 2000 * Math.pow(2, attempt - 1)
-        console.log(`[AccountContext] Retrying in ${delay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-    
-    // This should never be reached, but just in case
-    isAuthenticatingRef.current = false
-    throw lastError || new Error("Authentication failed")
-  }, [disconnect])
+  const connectReal = useCallback(async (_accessToken: string, _targetType: AccountType = "demo") => {
+    console.error("[AccountContext] Real/Connected accounts are disabled due to regulatory compliance.")
+    return
+  }, [])
 
   // Set up event handlers for accounts
   useEffect(() => {
@@ -331,42 +124,18 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }
   }, [accountInfo.accountType, accountInfo.isConnected, accountInfo.isConnecting, connectReal, disconnect, handleAuthorize])
 
-  const setAccountType = useCallback((type: AccountType) => {
-    localStorage.setItem("account_type", type)
-    setAccountInfo((prev) => {
-      const token = prev.accessToken || localStorage.getItem("deriv_access_token");
-      
-      if (token && token !== "undefined" && token !== "null") {
-        // We have a token, we should reconnect to the chosen account type via API
-        // The useEffect will pick up the disconnected state and reconnect
-        return {
-          ...prev,
-          accountType: type,
-          isConnected: false,
-          isConnecting: false,
-        }
-      }
-      
-      // No token fallback
-      if (type === "demo") {
-        return {
-          ...prev,
-          accountType: "demo",
-          balance: prev.accountType === "demo" ? prev.balance : 10000, // Keep current balance if already demo
-          currency: "USD",
-          loginId: null,
-          isConnected: false,
-          isConnecting: false,
-          accessToken: null,
-        }
-      } else {
-        return {
-          ...prev,
-          accountType: "real",
-          isConnecting: true, // Will trigger OAuth flow
-        }
-      }
-    })
+  const setAccountType = useCallback((_type: AccountType) => {
+    console.warn("[AccountContext] Account type switching is disabled due to regulatory compliance.")
+    setAccountInfo((prev) => ({
+      ...prev,
+      accountType: "demo",
+      balance: prev.accountType === "demo" ? prev.balance : 10000,
+      currency: "USD",
+      loginId: null,
+      isConnected: false,
+      isConnecting: false,
+      accessToken: null,
+    }))
   }, [])
 
   const updateBalance = useCallback((newBalance: number) => {
