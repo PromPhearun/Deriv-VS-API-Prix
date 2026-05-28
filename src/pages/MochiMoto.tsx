@@ -149,8 +149,11 @@ function MochiMotoContent() {
         isConnecting: false,
         error: err instanceof Error ? err.message : "Connection failed",
       })
+      if (accountType === "demo") {
+        fetchSymbols().catch(() => {})
+      }
     }
-  }, [])
+  }, [accountType, fetchSymbols])
 
   useEffect(() => {
     initializeAPI()
@@ -218,9 +221,66 @@ function MochiMotoContent() {
     }
   }, [activeGhostTrade, mascotEmotion])
 
+  // Generate live mock ticks and initial history in mock mode
+  useEffect(() => {
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!isMockMode) return
+
+    // Set hasInitialized to true so symbol changes are registered
+    hasInitializedRef.current = true
+
+    // Initialize mock history if empty or wrong symbol
+    const basePrice = currentSymbol.startsWith("cry") ? 70000 : 100
+    const currentHistory = useTradingStore.getState().tickHistory
+    const isWrongSymbol = currentHistory.length > 0 && currentHistory[0].symbol !== currentSymbol
+
+    if (currentHistory.length === 0 || isWrongSymbol) {
+      const history: any[] = []
+      let lastPrice = basePrice
+      const now = Math.floor(Date.now() / 1000)
+
+      for (let i = 20; i >= 0; i--) {
+        const change = (Math.random() - 0.5) * (basePrice * 0.001)
+        lastPrice = Math.max(0.01, lastPrice + change)
+        history.push({
+          epoch: now - i,
+          quote: lastPrice,
+          symbol: currentSymbol,
+        })
+      }
+      setTickHistory(history)
+      setCurrentTick(history[history.length - 1])
+    }
+
+    const interval = setInterval(() => {
+      useTradingStore.setState((state) => {
+        const history = state.tickHistory
+        const lastPrice = history[history.length - 1]?.quote || basePrice
+        const change = (Math.random() - 0.5) * (basePrice * 0.001)
+        const nextPrice = Math.max(0.01, lastPrice + change)
+        const now = Math.floor(Date.now() / 1000)
+
+        const newTick = {
+          epoch: now,
+          quote: nextPrice,
+          symbol: currentSymbol,
+        }
+
+        return {
+          currentTick: newTick,
+          tickHistory: [...history.slice(-100), newTick]
+        }
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isConnected, accountType, currentSymbol, setTickHistory, setCurrentTick])
+
   // Game loop for scrolling and slope calculation
   useEffect(() => {
-    if (!isConnected || tickHistory.length < 2) return
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!isConnected && !isMockMode) return
+    if (tickHistory.length < 2) return
 
     const gameLoop = () => {
       setScrollOffset(prev => prev + (raceState === "racing" ? 2 : 0.5))
@@ -235,12 +295,13 @@ function MochiMotoContent() {
 
     const interval = setInterval(gameLoop, 1000 / 60) // 60fps
     return () => clearInterval(interval)
-  }, [isConnected, tickHistory, raceState, calculateSlope])
+  }, [isConnected, accountType, tickHistory, raceState, calculateSlope])
 
   // Handle symbol change
   useEffect(() => {
-    if (!hasInitializedRef.current) return
-    if (!isConnected) return
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!hasInitializedRef.current && !isMockMode) return
+    if (!isConnected && !isMockMode) return
     
     const handleSymbolChange = async () => {
       const symbolToLoad = currentSymbol
@@ -254,6 +315,27 @@ function MochiMotoContent() {
       
       if (loadingSymbolRef.current !== symbolToLoad) return
       
+      if (isMockMode) {
+        const basePrice = symbolToLoad.startsWith("cry") ? 70000 : 100
+        const history: any[] = []
+        let lastPrice = basePrice
+        const now = Math.floor(Date.now() / 1000)
+
+        for (let i = 20; i >= 0; i--) {
+          const change = (Math.random() - 0.5) * (basePrice * 0.001)
+          lastPrice = Math.max(0.01, lastPrice + change)
+          history.push({
+            epoch: now - i,
+            quote: lastPrice,
+            symbol: symbolToLoad,
+          })
+        }
+        setTickHistory(history)
+        setCurrentTick(history[history.length - 1])
+        setIsSymbolLoading(false)
+        return
+      }
+
       const api = getDerivAPI()
       
       try {
@@ -282,7 +364,7 @@ function MochiMotoContent() {
     }
     
     handleSymbolChange()
-  }, [currentSymbol])
+  }, [currentSymbol, isConnected, accountType, cleanupSubscriptions, setIsSymbolLoading, setTickHistory, setCurrentTick])
 
   const lastTick = tickHistory?.[tickHistory.length - 1]
   const secondLastTick = tickHistory?.[tickHistory.length - 2]

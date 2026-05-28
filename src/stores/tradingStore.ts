@@ -397,8 +397,17 @@ export const useTradingStore = create<TradingState>()(
       console.log(`[TradingStore] Loaded ${enhancedSymbols.length} symbols from API`)
       set({ symbols: enhancedSymbols, isSymbolLoading: false })
     } catch (error) {
-      console.error("Failed to fetch symbols", error)
-      set({ isSymbolLoading: false })
+      console.error("Failed to fetch symbols, loading fallback symbols:", error)
+      const fallbackSymbols = [
+        { symbol: "R_100", display_name: "Volatility 100 Index", market: "synthetic_index", market_display_name: "Synthetic Indices" },
+        { symbol: "R_50", display_name: "Volatility 50 Index", market: "synthetic_index", market_display_name: "Synthetic Indices" },
+        { symbol: "R_25", display_name: "Volatility 25 Index", market: "synthetic_index", market_display_name: "Synthetic Indices" },
+        { symbol: "R_10", display_name: "Volatility 10 Index", market: "synthetic_index", market_display_name: "Synthetic Indices" },
+        { symbol: "cryBTCUSD", display_name: "BTC/USD", market: "cryptocurrency", market_display_name: "Cryptocurrencies" },
+        { symbol: "cryETHUSD", display_name: "ETH/USD", market: "cryptocurrency", market_display_name: "Cryptocurrencies" },
+        { symbol: "frxEURUSD", display_name: "EUR/USD", market: "forex", market_display_name: "Forex" },
+      ] as any[] as ActiveSymbol[]
+      set({ symbols: fallbackSymbols, isSymbolLoading: false })
     }
   },
 

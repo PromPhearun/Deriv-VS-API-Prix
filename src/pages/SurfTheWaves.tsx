@@ -177,8 +177,11 @@ function SurfTheWavesContent() {
         isConnecting: false,
         error: err instanceof Error ? err.message : "Connection failed",
       })
+      if (accountType === "demo") {
+        fetchSymbols().catch(() => {})
+      }
     }
-  }, [currentSymbol, setConnectionState, clearState, fetchSymbols, setTickHistory, subscribeToStream])
+  }, [currentSymbol, setConnectionState, clearState, fetchSymbols, setTickHistory, subscribeToStream, accountType])
 
   useEffect(() => {
     initializeAPI()
@@ -190,10 +193,66 @@ function SurfTheWavesContent() {
     }
   }, [])
 
+  // Generate live mock ticks and initial history in mock mode
+  useEffect(() => {
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!isMockMode) return
+
+    // Set hasInitialized to true so symbol changes are registered
+    hasInitializedRef.current = true
+
+    // Initialize mock history if empty or wrong symbol
+    const basePrice = currentSymbol.startsWith("cry") ? 70000 : 100
+    const currentHistory = useTradingStore.getState().tickHistory
+    const isWrongSymbol = currentHistory.length > 0 && currentHistory[0].symbol !== currentSymbol
+
+    if (currentHistory.length === 0 || isWrongSymbol) {
+      const history: any[] = []
+      let lastPrice = basePrice
+      const now = Math.floor(Date.now() / 1000)
+
+      for (let i = 50; i >= 0; i--) {
+        const change = (Math.random() - 0.5) * (basePrice * 0.001)
+        lastPrice = Math.max(0.01, lastPrice + change)
+        history.push({
+          epoch: now - i,
+          quote: lastPrice,
+          symbol: currentSymbol,
+        })
+      }
+      setTickHistory(history)
+      setCurrentTick(history[history.length - 1])
+    }
+
+    const interval = setInterval(() => {
+      useTradingStore.setState((state) => {
+        const history = state.tickHistory
+        const lastPrice = history[history.length - 1]?.quote || basePrice
+        const change = (Math.random() - 0.5) * (basePrice * 0.001)
+        const nextPrice = Math.max(0.01, lastPrice + change)
+        const now = Math.floor(Date.now() / 1000)
+
+        const newTick = {
+          epoch: now,
+          quote: nextPrice,
+          symbol: currentSymbol,
+        }
+
+        return {
+          currentTick: newTick,
+          tickHistory: [...history.slice(-100), newTick]
+        }
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isConnected, accountType, currentSymbol, setTickHistory, setCurrentTick])
+
   // Handle symbol change
   useEffect(() => {
-    if (!hasInitializedRef.current) return
-    if (!isConnected) return
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!hasInitializedRef.current && !isMockMode) return
+    if (!isConnected && !isMockMode) return
     
     const handleSymbolChange = async () => {
       const symbolToLoad = currentSymbol
@@ -213,6 +272,27 @@ function SurfTheWavesContent() {
       
       if (loadingSymbolRef.current !== symbolToLoad) return
       
+      if (isMockMode) {
+        const basePrice = symbolToLoad.startsWith("cry") ? 70000 : 100
+        const history: any[] = []
+        let lastPrice = basePrice
+        const now = Math.floor(Date.now() / 1000)
+
+        for (let i = 50; i >= 0; i--) {
+          const change = (Math.random() - 0.5) * (basePrice * 0.001)
+          lastPrice = Math.max(0.01, lastPrice + change)
+          history.push({
+            epoch: now - i,
+            quote: lastPrice,
+            symbol: symbolToLoad,
+          })
+        }
+        setTickHistory(history)
+        setCurrentTick(history[history.length - 1])
+        setIsSymbolLoading(false)
+        return
+      }
+
       const api = getDerivAPI()
       
       try {
@@ -245,7 +325,7 @@ function SurfTheWavesContent() {
     
     handleSymbolChange()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSymbol, isConnected])
+  }, [currentSymbol, isConnected, accountType])
 
   // Calculate volatility and spawn power-ups (with throttling to prevent infinite loops)
   useEffect(() => {
@@ -312,7 +392,9 @@ function SurfTheWavesContent() {
 
   // Optimized game loop (batch updates to reduce re-renders)
   useEffect(() => {
-    if (!isConnected || !currentSession) return
+    const isMockMode = !isConnected && accountType === "demo"
+    if (!isConnected && !isMockMode) return
+    if (!currentSession) return
 
     let frameCount = 0
     const gameLoop = setInterval(() => {
@@ -338,7 +420,7 @@ function SurfTheWavesContent() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, currentSession?.id])
+  }, [isConnected, accountType, currentSession?.id])
 
   // Detect tricks based on price volatility (with cooldown to prevent spam)
   useEffect(() => {
@@ -684,7 +766,7 @@ function SurfTheWavesContent() {
               {!currentSession ? (
                 <Button
                   onClick={handleStartSetup}
-                  disabled={!isConnected || tickHistory.length === 0}
+                  disabled={(!isConnected && accountType !== "demo") || tickHistory.length === 0}
                   className="gap-2 rounded-xl"
                   style={{
                     backgroundColor: "#10B981",
