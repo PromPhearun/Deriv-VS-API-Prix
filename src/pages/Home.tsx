@@ -28,7 +28,7 @@ import { getSoundManager } from "../utils/soundManager"
 import { useState } from "react"
 
 function Home() {
-  const { isConnected, isConnecting } = useAccount()
+  const { isConnected, isConnecting, accountType } = useAccount()
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
 
   const {
@@ -78,16 +78,18 @@ function Home() {
     try {
       const api = getDerivAPI()
 
-      // Check if API is ready (connected + authorized)
-      if (!api.isReady()) {
+      // Check if API is ready (connected + authorized for real, or just connected for demo)
+      const isReadyForStream = accountType === "demo" ? api.getConnectionState() : api.isReady()
+      if (!isReadyForStream) {
         console.warn("[Home] API not ready, waiting...")
         // Wait for API to be ready with timeout
         let apiWaited = 0
-        while (!api.isReady() && apiWaited < 5000) {
+        const checkReady = () => accountType === "demo" ? api.getConnectionState() : api.isReady()
+        while (!checkReady() && apiWaited < 5000) {
           await new Promise(resolve => setTimeout(resolve, 100))
           apiWaited += 100
         }
-        if (!api.isReady()) {
+        if (!checkReady()) {
           console.error("[Home] API timed out waiting for readiness")
           return
         }
@@ -277,7 +279,7 @@ function Home() {
   useEffect(() => {
     // CRITICAL: Skip if initialization hasn't completed yet
     if (!hasInitializedRef.current) return
-    if (!isConnected) return
+    if (!isConnected && accountType !== "demo") return
     
     // Check if we're already processing this exact symbol to avoid redundant API calls
     if (loadingSymbolRef.current === currentSymbol && !isSymbolLoading) return
@@ -510,7 +512,7 @@ function Home() {
     useEffect(() => {
       // CRITICAL: Skip if initialization hasn't completed yet
       if (!hasInitializedRef.current) return
-      if (!isConnected) return
+      if (!isConnected && accountType !== "demo") return
       
       const handleChartStyleChange = async () => {
       console.log("[Home] Chart style changed to:", chartStyle)
