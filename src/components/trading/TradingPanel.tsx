@@ -264,12 +264,7 @@ const TradingPanel: React.FC = () => {
       return
     }
 
-    if (contractCategory === "RISE_FALL") {
-      // Rise/Fall doesn't use a barrier - clear all barriers
-      setBarrier(null)
-      useTradingStore.getState().setBarrierHigh(null)
-      useTradingStore.getState().setBarrierLow(null)
-    } else if (contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH") {
+    if (contractCategory === "HIGHER_LOWER" || contractCategory === "TOUCH_NO_TOUCH") {
       // Show two barriers: Higher and Lower based on current price
       if (barrierOffset !== null) {
         const absOffset = Math.abs(barrierOffset)
@@ -277,6 +272,11 @@ const TradingPanel: React.FC = () => {
         useTradingStore.getState().setBarrierHigh(currentTick.quote + absOffset)
         useTradingStore.getState().setBarrierLow(currentTick.quote - absOffset)
       }
+    } else {
+      // Rise/Fall, Multipliers, etc. don't use barriers - clear all barriers
+      setBarrier(null)
+      useTradingStore.getState().setBarrierHigh(null)
+      useTradingStore.getState().setBarrierLow(null)
     }
   }, [contractCategory, currentTick, setBarrier, barrierOffset, isPositiveOffset])
 
